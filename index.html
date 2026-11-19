@@ -231,6 +231,16 @@
     <div class="duel-who"><strong id="duelMeName"></strong><span class="duel-meta" id="duelMeStats"></span><span class="duel-meta" id="duelMeRecord"></span></div>
     <label class="duel-switch"><input type="checkbox" id="duelAvailable"><span>Available for duels</span></label>
   </section>
+  <section id="duelPractice" class="duel-practice" aria-labelledby="duelPracticeTitle" hidden>
+    <h3 class="duel-h" id="duelPracticeTitle">Practice · local only</h3>
+    <p class="duel-note">Fight the sparring bot right away, no invitation. Only on your own computer (<code>npm run dev</code>); never saved to records.</p>
+    <div class="duel-practice-grid">
+      <label for="practiceMine">Your weapon<select id="practiceMine"></select></label>
+      <label for="practiceBot">Bot's weapon<select id="practiceBot"></select></label>
+      <label for="practiceSkill">Bot's skill<select id="practiceSkill"><option value="novice">Novice</option><option value="average" selected>Average</option><option value="skilled">Skilled</option></select></label>
+    </div>
+    <button type="button" class="btn primary" id="practiceStart">Start practice</button>
+  </section>
   <p id="duelConn" class="duel-note" role="status" hidden></p>
   <p id="duelSetup" class="duel-note" role="alert" hidden></p>
   <h3 class="duel-h">Online now</h3>

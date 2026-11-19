@@ -22,6 +22,7 @@ function clearEquipment(body) {
   body.marketLayers = [];
   body.marketPet = null;
   body.marketEquipment = null;
+  body.weaponTip = null; body.weaponModel = null; body.weaponColor = null;
 }
 
 function material(color, metal = false) {
@@ -127,18 +128,23 @@ function vest(body, item) {
   attach(body, body.spine, group);
 }
 
-// A weapon in the right hand (docs/DUEL-SPEC.md, Phase 1.2). Built at the hand's place with the character facing +z
-// (applyEquipment has reset the root), then attached to the hand so it follows every swing.
+// A weapon in the right hand (docs/DUEL-SPEC.md, Phase 1.2). Built with the arm hanging straight down and the
+// character facing +z, then attached to the hand so it follows every swing. Blades leave the fist angled forward, like a
+// real grip: raised overhead the blade points back, swung down it passes through whoever is in front. Guns line up with
+// the arm, so a raised arm aims them straight ahead. Each has a `tip` (blade end, hammer head, muzzle): ui/duelArena.js
+// draws swing trails from it and fires bolts from it.
 const cyl = (r1, r2, h, n = 10) => new THREE.CylinderGeometry(r1, r2, h, n);
+const GRIP = { blade: 1.875, staff: 1.65, gun: Math.PI / 2 }; // tilt from straight up, about the hand's x axis
 function weaponModel(item) {
   const g = new THREE.Group(), metal = material(item.color, true), trim = material(item.accent, true), grip = material('#2a2630');
   const glow = material(item.accent); glow.emissive.set(item.accent); glow.emissiveIntensity = 1.1;
+  const tip = new THREE.Object3D(); g.add(tip);
   const blade = (len, width) => {
     mesh(g, cyl(.02, .022, .16), grip, 0, -.02, 0);
     box(g, trim, width * 3.4, .022, .05, 0, .07, 0);
     box(g, metal, width, len, .012, 0, .08 + len / 2, 0);
     box(g, glow, width * .25, len * .9, .014, 0, .08 + len / 2, 0);
-    g.rotation.x = 1.15; // pointing forward and a little up
+    tip.position.set(0, .08 + len, 0); g.rotation.x = GRIP.blade;
   };
   switch (item.model) {
     case 'sword': blade(.62, .04); break;
@@ -147,19 +153,21 @@ function weaponModel(item) {
       mesh(g, cyl(.018, .022, 1.45), metal, 0, .1, 0);
       const crystal = mesh(g, new THREE.OctahedronGeometry(.07), glow, 0, .88, 0); crystal.scale.y = 1.6;
       mesh(g, new THREE.TorusGeometry(.055, .012, 6, 16), trim, 0, .78, 0).rotation.x = Math.PI / 2;
+      tip.position.set(0, .9, 0); g.rotation.x = GRIP.staff;
       break;
     }
     case 'hammer':
       mesh(g, cyl(.02, .024, .62), grip, 0, .2, 0);
       box(g, metal, .24, .13, .13, 0, .52, 0);
       box(g, glow, .245, .03, .135, 0, .52, 0);
-      g.rotation.x = 1.15;
+      tip.position.set(0, .52, 0); g.rotation.x = GRIP.blade;
       break;
-    case 'pistol':
+    case 'pistol': // built pointing +z (the barrel), then turned to lie along the arm
       box(g, grip, .04, .11, .05, 0, -.03, 0);
       box(g, metal, .05, .06, .2, 0, .04, .07);
       box(g, glow, .052, .015, .14, 0, .07, .08);
       mesh(g, cyl(.016, .016, .04, 10), glow, 0, .04, .19).rotation.x = Math.PI / 2;
+      tip.position.set(0, .04, .22); g.rotation.x = GRIP.gun;
       break;
     case 'rifle':
       box(g, grip, .04, .1, .05, 0, -.03, 0);
@@ -167,16 +175,22 @@ function weaponModel(item) {
       box(g, metal, .05, .09, .2, 0, .02, -.2);
       for (const z of [.12, .22, .32]) mesh(g, cyl(.035, .035, .03, 12), glow, 0, .05, z).rotation.x = Math.PI / 2;
       mesh(g, cyl(.018, .018, .12, 10), glow, 0, .06, .52).rotation.x = Math.PI / 2;
+      tip.position.set(0, .06, .59); g.rotation.x = GRIP.gun;
       break;
     default: blade(.6, .04);
   }
+  g.userData.tip = tip;
   return g;
 }
 function weapon(body, item) {
-  const hand = body.sockets?.rightHand ?? body.armR, g = weaponModel(item);
+  const hand = body.sockets?.rightHand ?? body.armR, arm = body.armR, g = weaponModel(item);
+  // build it against the arm hanging straight down, whatever pose the character is in right now
+  const pose = arm.rotation.clone(); arm.rotation.set(0, 0, 0); body.root.updateMatrixWorld(true);
   hand.getWorldPosition(g.position);
   hand.attach(g); // keeps the world pose built above
+  arm.rotation.copy(pose); body.root.updateMatrixWorld(true);
   body.marketLayers.push(g);
+  body.weaponTip = g.userData.tip; body.weaponModel = item.model; body.weaponColor = item.accent;
 }
 
 function makePet(item) {

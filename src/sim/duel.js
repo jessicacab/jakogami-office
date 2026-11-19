@@ -65,15 +65,16 @@ function startDuel(o) {
 
 function duelFight(m) { Object.assign(m, { phase: 'fight', t: 0 }); }
 
-// A server event: { who, kind, act?, ms?, dmg?, crit?, on? }.
+// A server event: { who, kind, act?, ms?, dmg?, crit?, on? }. With a gun, the shot is the `fire` event and everything
+// after it (hit, guarded, dodge, a deflection, a miss) is the bolt arriving: the shooter's arm does not swing again.
 function duelEvent(m, e) {
-  const s = e.who, o = 1 - s;
+  const s = e.who, o = 1 - s, gun = m.stats[s].weapon?.kind === 'gun';
   if (e.kind === 'windup') { m.wind[s] = { act: e.act, t: 0, dur: e.ms / 1000 }; return; }
   if (e.kind === 'guard') { m.guard[s] = !!e.on; return; }
-  if (e.kind === 'fizzle') { m.dodged[o] = 0; return; } // a blast that found nobody there
+  if (e.kind === 'fire') { m.lastAct[s] = e.act === 'bolt' ? 'bolt' : 'blast'; m.wind[s] = null; m.swing[s] = 0; return; }
+  if (e.kind === 'fizzle') { m.dodged[o] = 0; return; } // something fired that found nobody there
   if (e.kind === 'blast') { m.hp[o] = Math.max(0, m.hp[o] - e.dmg); m.hurt[o] = 0; m.dealt[s] += e.dmg; return; } // it arrives
-  m.lastAct[s] = m.wind[s]?.act ?? 'strike';
-  m.wind[s] = null; m.swing[s] = 0;
+  if (!gun) { m.lastAct[s] = m.wind[s]?.act ?? 'strike'; m.wind[s] = null; m.swing[s] = 0; }
   if (e.kind === 'hit' || e.kind === 'guarded') { m.hp[o] = Math.max(0, m.hp[o] - e.dmg); m.hurt[o] = 0; m.dealt[s] += e.dmg; }
   else if (e.kind === 'dodge') m.dodged[o] = 0;
   else if (e.kind === 'miss') m.missed[s] = 0;
@@ -106,18 +107,27 @@ function stopDuel(m) {
 
 // Each fighter's pose for the moment (people/animation.js); `dizzy` (staggered by a parry) puts birds round the head.
 // Moving shows the run, unless they are in the middle of something.
+// Each weapon swings its own way (people/animation.js): blades slash, the staff thrusts, guns aim and kick, fists punch.
+// `task.k` is how far through the wind-up (the hit lands at 1) or the follow-through it is.
+const FOLLOW = .4; // seconds of follow-through after a strike lands (or a shot leaves)
 function pose(m, f, i) {
   let a = null;
-  const gun = m.stats[i].weapon?.kind === 'gun';
-  if (m.phase === 'end') a = i === m.winner ? 'cheer' : m.winner === null ? 'duelReady' : m.result === 'ko' ? 'slapKO' : 'duelLose';
+  const w = m.stats[i].weapon ?? { model: 'fists', kind: 'melee' }, gun = w.kind === 'gun', staff = w.model === 'staff';
+  const blade = w.kind === 'melee' && w.model !== 'fists' && !staff;
+  f.task.two = w.model === 'greatsword' || w.model === 'hammer' || w.model === 'rifle';
+  if (m.phase === 'end') a = i === m.winner ? 'cheer' : m.winner === null ? null : m.result === 'ko' ? 'slapKO' : 'duelLose';
   else if (m.stagger[i] > 0) a = 'slapDizzy';
-  else if (m.hurt[i] !== null && m.hurt[i] < .35) a = 'duelHurt';
-  else if (m.wind[i]) a = m.wind[i].act === 'blast' ? 'duelCharge' : gun ? 'duelAim' : 'duelWind';
-  else if (m.swing[i] !== null && m.swing[i] < .3) a = m.lastAct[i] === 'blast' ? 'duelBlast' : gun ? 'duelShoot' : 'duelPunch';
-  else if (m.guard[i]) a = 'duelGuard';
+  else if (m.hurt[i] !== null && m.hurt[i] < .3) a = 'duelHurt';
+  else if (m.wind[i]) {
+    f.task.k = Math.min(1, m.wind[i].t / m.wind[i].dur);
+    a = m.wind[i].act === 'blast' ? 'duelCharge' : gun ? 'duelAim' : staff ? 'duelThrust' : blade ? 'duelSlash' : 'duelWind';
+  } else if (m.swing[i] !== null && m.swing[i] < (w.model === 'fists' ? .3 : FOLLOW)) {
+    f.task.k = m.swing[i] / FOLLOW;
+    a = m.lastAct[i] === 'blast' ? 'duelBlast' : gun ? 'duelShoot' : staff ? 'duelThrustHit' : blade ? 'duelSlashFollow' : 'duelPunch';
+  } else if (m.guard[i]) a = 'duelGuard';
   else if (m.dodged[i] !== null && m.dodged[i] < .35) a = 'duelDodge';
   f.state = !a && f.moving ? 'walking' : 'doing';
-  f.task.anim = a ?? 'duelReady';
+  f.task.anim = a ?? (gun ? 'duelReadyGun' : blade || staff ? 'duelReadyBlade' : 'duelReady');
   f.dizzy = a === 'slapDizzy';
 }
 

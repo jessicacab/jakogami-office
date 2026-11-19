@@ -33,13 +33,20 @@ function spawnBurst(pos, color = 0xffd36b, size = .5, into = null) {
   const s = sprite(color, size); s.position.copy(pos);
   add(s, size > 1 ? .7 : .35, k => { s.scale.setScalar(size * (1 + k * 1.4)); s.material.opacity = 1 - k; }, into);
 }
-// The Focus Blast: an orb from `from` to `to` over `dur` seconds (the hit, if any, is a separate burst).
-function spawnOrb(from, to, dur, color = 0x8cc7ea, into = null) {
-  const s = sprite(color, .38), a = from.clone(), b = to.clone();
+// A glowing speck that fades fast: laid down every frame behind a blade mid-swing, or behind a bolt, it reads as a trail.
+function spawnTrail(pos, color = 0xffffff, into = null, size = .16) {
+  const s = sprite(color, size); s.position.copy(pos);
+  add(s, .18, k => { s.material.opacity = (1 - k) * .9; s.scale.setScalar(size * (1 - k * .6)); }, into);
+}
+// Something fired: an orb from `from` to `to` over `dur` seconds (the hit, if any, is a separate burst). A Focus Blast
+// arcs a little and is large; a gun's bolt (`bolt`) flies straight, small and fast, leaving a trail.
+function spawnOrb(from, to, dur, color = 0x8cc7ea, into = null, bolt = false) {
+  const size = bolt ? .2 : .38, s = sprite(color, size), a = from.clone(), b = to.clone();
   s.position.copy(a);
   add(s, Math.max(.05, dur), k => {
-    s.position.lerpVectors(a, b, k); s.position.y += Math.sin(k * Math.PI) * .15;
-    s.scale.setScalar(.38 + Math.sin(k * 30) * .04 + k * .2);
+    s.position.lerpVectors(a, b, k);
+    if (bolt) spawnTrail(s.position, color, into, .12);
+    else { s.position.y += Math.sin(k * Math.PI) * .15; s.scale.setScalar(.38 + Math.sin(k * 30) * .04 + k * .2); }
   }, into);
 }
 // Damage (or a word: "Parry!", "Dodge") floating up from `pos`.
@@ -70,4 +77,4 @@ function updateDuelFx(dt) {
 }
 function clearDuelFx() { while (live.length) { live[0].t = live[0].dur; updateDuelFx(0); } }
 
-export { clearDuelFx, spawnBurst, spawnNumber, spawnOrb, updateDuelFx };
+export { clearDuelFx, spawnBurst, spawnNumber, spawnOrb, spawnTrail, updateDuelFx };

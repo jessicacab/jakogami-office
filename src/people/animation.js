@@ -121,8 +121,37 @@ function targetPose(p, k, T) {
     case 'duelBlast': o.lShX = o.rShX = -1.5; o.lShZ = .12; o.rShZ = -.12; o.lEl = o.rEl = -.05; o.lean = .12; o.hipY = .85; break;
     case 'duelHurt': o.lShX = o.rShX = -.5; o.lEl = o.rEl = -.4; o.headX = -.35; o.lean = -.22; o.hipY = .86; break;
     case 'duelDodge': o.hipY = .78; o.lHip = o.rHip = -.4; o.lKnee = o.rKnee = .8; o.lShX = o.rShX = -1; o.lEl = o.rEl = -.9; o.lean = .15; break;
-    case 'duelAim': o.rShX = -1.5; o.rShZ = .05; o.rEl = -.05; o.lShX = -1.1; o.lEl = -.9; o.lShZ = .25; o.lean = .02; o.headX = .05; o.hipY = .85; break; // a gun raised
-    case 'duelShoot': o.rShX = -1.3; o.rShZ = .05; o.rEl = -.1; o.lShX = -1.1; o.lEl = -.9; o.lShZ = .25; o.lean = -.08; o.headX = -.05; o.hipY = .85; break; // and its kick
+    // With a weapon (sim/duel.js sets task.k, how far through the wind-up or follow-through, and task.two for two-handed
+    // weapons). The weapon arm has no elbow bend here, so a blade or a barrel points exactly where the arm puts it
+    // (character/equipment.js angles blades forward from the fist and lines guns up with the arm).
+    case 'duelReadyBlade': weaponArm(o, -1.25, -.15, p.task.two); o.hipY = .85 + Math.abs(Math.sin(T * 4)) * .012; o.lean = .06; o.lHip = -.12; o.rHip = .12; o.lKnee = o.rKnee = .15; break;
+    case 'duelSlash': { // cocked back over the head, then down through whoever is in front: the hit lands as k reaches 1
+      const k = p.task.k ?? 0;
+      if (k < .65) { const t = 1 - (1 - k / .65) ** 2; weaponArm(o, lerp(-1.25, -2.95, t), lerp(-.15, -.5, t), p.task.two); o.lean = lerp(.06, -.14, t); }
+      else { const t = ((k - .65) / .35) ** 2; weaponArm(o, lerp(-2.95, -.5, t), lerp(-.5, .4, t), p.task.two); o.lean = lerp(-.14, .24, t); o.rHip = -.3 * t; o.lHip = .2 * t; }
+      o.hipY = .85; break;
+    }
+    case 'duelSlashFollow': { // carries on down and across, then back to guard
+      const k = p.task.k ?? 1, t = Math.min(1, k / .35), back = Math.max(0, (k - .35) / .65);
+      weaponArm(o, lerp(lerp(-.5, -.15, t), -1.25, back), lerp(lerp(.4, .55, t), -.15, back), p.task.two);
+      o.lean = lerp(.24, .06, back); o.rHip = lerp(-.3, .12, back); o.hipY = .85; break;
+    }
+    case 'duelThrust': { // the staff drawn back, then driven forward
+      const k = p.task.k ?? 0;
+      if (k < .7) { const t = 1 - (1 - k / .7) ** 2; weaponArm(o, lerp(-1.25, -.6, t), -.1, true); o.lean = lerp(.06, -.1, t); }
+      else { const t = ((k - .7) / .3) ** 2; weaponArm(o, lerp(-.6, -1.62, t), -.05, true); o.lean = lerp(-.1, .28, t); o.rHip = -.35 * t; }
+      o.hipY = .85; break;
+    }
+    case 'duelThrustHit': { const back = Math.max(0, ((p.task.k ?? 1) - .4) / .6); weaponArm(o, lerp(-1.62, -1.25, back), -.05, true); o.lean = lerp(.28, .06, back); o.rHip = lerp(-.35, .12, back); o.hipY = .85; break; }
+    case 'duelReadyGun': o.rShX = -.6; o.rEl = 0; o.rShZ = -.05; o.lShX = p.task.two ? -1 : -.7; o.lEl = p.task.two ? -.2 : -.6; o.lShZ = p.task.two ? -.3 : .2; o.hipY = .85 + Math.abs(Math.sin(T * 3)) * .008; o.lHip = -.12; o.rHip = .12; break;
+    case 'duelAim': { // raised and aimed at the other one, the other hand steadying it
+      const t = Math.min(1, (p.task.k ?? 1) / .55), e = 1 - (1 - t) ** 2;
+      o.rShX = lerp(-.6, -1.57, e); o.rEl = 0; o.rShZ = -.03; o.lShX = lerp(-.7, -1.45, e); o.lEl = -.15; o.lShZ = -.38; o.headX = .04; o.lean = .03; o.hipY = .85; break;
+    }
+    case 'duelShoot': { // the shot's kick, then steady again
+      const r = Math.max(0, 1 - (p.task.k ?? 1) / .3);
+      o.rShX = -1.57 - .3 * r; o.rEl = 0; o.rShZ = -.03; o.lShX = -1.45 - .2 * r; o.lEl = -.15; o.lShZ = -.38; o.lean = .03 - .1 * r; o.headX = .04 - .06 * r; o.hipY = .85; break;
+    }
     case 'duelLose': o.lShX = o.rShX = .1; o.lShZ = .08; o.rShZ = -.08; o.headX = .45; o.lean = .12; break;
     case 'cheer': { const h = Math.max(0, Math.sin(T * 7)); o.lShX = o.rShX = -2.7 - h * .2; o.lShZ = .35; o.rShZ = -.35; o.lEl = o.rEl = -.15; o.hipY = .88 + h * .05; o.headX = -.2; break; }
     default: o.lShX = Math.sin(T * .9) * .05; o.rShX = -Math.sin(T * .9) * .05; break;
@@ -145,7 +174,15 @@ function fightNear(p) {
   for (const m of slap.matches) if (m.fighters && m.phase !== 'gather' && m.spots[0].pos.distanceToSquared(p.pos) < 49) return m.spots[0].pos;
   return null;
 }
-const SNAPPY = new Set(['walk', 'run', 'slapHit', 'slapTake', 'duelWind', 'duelPunch', 'duelHurt', 'duelBlast', 'duelDodge', 'duelAim', 'duelShoot']); // poses reached quickly
+const SNAPPY = new Set(['walk', 'run', 'slapHit', 'slapTake', 'duelWind', 'duelPunch', 'duelHurt', 'duelBlast', 'duelDodge', 'duelAim', 'duelShoot',
+  'duelSlash', 'duelSlashFollow', 'duelThrust', 'duelThrustHit']); // poses reached quickly (the swings follow task.k closely)
+const lerp = (a, b, t) => a + (b - a) * t;
+// The weapon arm at (shX, shZ) with no elbow bend; the other hand either joins the grip (two-handed) or stays up as a guard.
+function weaponArm(o, shX, shZ, two) {
+  o.rShX = shX; o.rShZ = shZ; o.rEl = 0;
+  if (two) { o.lShX = shX + .1; o.lShZ = -shZ * .4 - .25; o.lEl = -.15; }
+  else { o.lShX = -.95; o.lEl = -.9; o.lShZ = .25; }
+}
 function applyPose(p, dt) {
   const k = animKey(p), o = targetPose(p, k, p.animT), c = p.pose, rate = 1 - Math.exp(-dt * (SNAPPY.has(k) ? 22 : 9));
   for (const j of JOINTS) c[j] = c[j] === undefined ? o[j] : c[j] + (o[j] - c[j]) * rate;

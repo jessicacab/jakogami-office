@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { Server } from 'socket.io';
 import { DUEL_ACTS, DUEL_LIMITS, DUEL_MAX, DUEL_STATE_EVERY, DUEL_TICK_MS, DUEL_TIME, duelStats } from '../src/config/duel.js';
-import { characterAttributes, normalizeEquipment } from '../src/config/marketplace.js';
+import { characterAttributes, marketplaceItem, normalizeEquipment } from '../src/config/marketplace.js';
+import { SKILL, botTurn } from './duelBots.js';
 import { act, forfeit, makeFight, move, snapshot, tick } from './duelEngine.js';
 
 // Duels between signed-in coworkers (docs/DUEL-SPEC.md). The browser side is src/ui/duel.js.
@@ -11,10 +12,14 @@ import { act, forfeit, makeFight, move, snapshot, tick } from './duelEngine.js';
 // Nothing happens without consent: a challenge only becomes a duel when the challenged person accepts it.
 // State is in memory: keep one server instance (like login throttling); a restart ends duels without a result.
 const MAX_ID = 64;
+// Practice duels against a sparring bot: only when the hub is made with `practice: true`, which only the local dev
+// server does (vite.config.js `npm run dev`); the production server never turns it on. Never saved to records.
+const BOT = { id: 'practice-bot', name: 'Sparring Bot' };
+const isWeapon = id => id === null || id === 'fists' || marketplaceItem(id)?.slot === 'weapon';
 const firstName = name => String(name || 'They').split(' ')[0];
 const isId = v => typeof v === 'string' && v.length > 0 && v.length <= MAX_ID;
 
-function makeDuelHub({ now = Date.now, rng = Math.random, loadGear, saveResult = async () => {}, log = () => {} }) {
+function makeDuelHub({ now = Date.now, rng = Math.random, loadGear, saveResult = async () => {}, log = () => {}, practice = false }) {
   const users = new Map();     // userId → { id, name, conns: Set, available, attributes (totals) | null }
   const conns = new Set();     // everyone connected sees every duel
   const invites = new Map();   // id → { id, from, to, fromConn, expiresAt }
@@ -63,7 +68,7 @@ function makeDuelHub({ now = Date.now, rng = Math.random, loadGear, saveResult =
     u.name = conn.user.name; u.available = conn.available !== false; u.conns.add(conn); conns.add(conn);
     // back within the grace time: this connection fights on
     for (const m of matches.values()) { const side = m.users.indexOf(u.id); if (side >= 0 && m.away[side] !== null) { m.conns[side] = conn; m.away[side] = null; } }
-    conn.emit('duel:hello', { you: u.id, matches: [...matches.values()].filter(m => m.phase !== 'loading').map(m => view(m, conn)) });
+    conn.emit('duel:hello', { you: u.id, practice, matches: [...matches.values()].filter(m => m.phase !== 'loading').map(m => view(m, conn)) });
     listOnline();
     refreshAttributes([u.id]).then(listOnline, () => {});
   }
@@ -147,6 +152,29 @@ function makeDuelHub({ now = Date.now, rng = Math.random, loadGear, saveResult =
     return { ok: true };
   }
 
+  // A practice duel against the sparring bot (local only): starts at once, no invitation. `weapon` is the bot's,
+  // `mine` optionally overrides your own weapon for this duel (to try one you have not bought), `skill` the bot's level.
+  async function startPractice(conn, msg) {
+    if (!practice) return { ok: false, error: 'Practice duels are only available when running locally' };
+    const me = users.get(conn.user.id), weapon = msg?.weapon ?? null, mine = msg?.mine, skill = SKILL[msg?.skill] ? msg.skill : 'average';
+    if (!isWeapon(weapon) || (mine !== undefined && !isWeapon(mine))) return { ok: false, error: 'Unknown weapon' };
+    if (busy(me.id)) return { ok: false, error: 'Finish your current challenge or duel first' };
+    if (full()) return { ok: false, error: 'Too many duels are on right now, try again in a bit' };
+    const m = { id: randomUUID(), users: [me.id, BOT.id], names: [me.name, BOT.name], conns: [conn, null], away: [null, null], phase: 'loading', startedAt: now(), practice: { skill: SKILL[skill], bot: {} } };
+    matches.set(m.id, m);
+    let gear;
+    try { gear = await refreshAttributes([me.id]); } catch (_) { gear = null; }
+    if (!gear || !users.get(me.id)?.conns.size) { matches.delete(m.id); return { ok: false, error: 'Duels are unavailable right now' }; }
+    const own = gear.get(me.id)?.equipped ?? normalizeEquipment(null);
+    m.equipped = [mine === undefined ? own : { ...own, weapon: mine === 'fists' ? null : mine }, normalizeEquipment({ weapon: weapon === 'fists' ? null : weapon })];
+    m.attributes = m.equipped.map(e => characterAttributes(e).total);
+    m.stats = m.attributes.map((a, i) => duelStats(a, m.equipped[i].weapon));
+    m.phase = 'intro'; m.introUntil = now() + DUEL_TIME.intro * 1000;
+    sendMatch(m, 'duel:start');
+    listOnline();
+    return { ok: true };
+  }
+
   // Where a fighter's browser has moved them; the engine limits speed and keeps them on the helipad. Everyone hears the
   // result in the next state update. Not acknowledged (it comes 20 times a second).
   function moveTo(conn, msg) {
@@ -176,7 +204,7 @@ function makeDuelHub({ now = Date.now, rng = Math.random, loadGear, saveResult =
     matches.delete(m.id);
     const f = m.fight, winner = f.winner === null ? null : m.users[f.winner];
     broadcast('duel:end', { id: m.id, winner, result: f.result, hp: f.f.map(x => x.hp), dealt: f.f.map(x => x.dealt) });
-    saveResult({
+    if (!m.practice) saveResult({
       challenger: m.users[0], opponent: m.users[1], winner, result: f.result,
       challengerAttributes: m.attributes[0], opponentAttributes: m.attributes[1],
       startedAt: new Date(m.startedAt).toISOString(), endedAt: new Date(now()).toISOString(),
@@ -199,6 +227,7 @@ function makeDuelHub({ now = Date.now, rng = Math.random, loadGear, saveResult =
         } else continue;
       }
       if (gone >= 0) forfeit(m.fight, gone);
+      if (m.practice) botTurn(m.fight, 1, m.practice.bot, m.practice.skill, t, Math.random, ev => broadcast('duel:event', { id: m.id, ...ev }));
       for (const ev of tick(m.fight, t)) broadcast('duel:event', { id: m.id, ...ev });
       if (m.fight.over) end(m);
       else if (ticks % DUEL_STATE_EVERY === 0) broadcast('duel:state', { id: m.id, ...snapshot(m.fight) });
@@ -214,6 +243,7 @@ function makeDuelHub({ now = Date.now, rng = Math.random, loadGear, saveResult =
       case 'duel:cancel': return cancel(conn, payload);
       case 'duel:input': return input(conn, payload);
       case 'duel:move': return moveTo(conn, payload);
+      case 'duel:practice': return startPractice(conn, payload);
       default: return { ok: false, error: 'Unknown request' };
     }
   }
@@ -255,12 +285,13 @@ function makeResultSaver(db, log) {
 
 // Socket.IO at /api/socket.io (under /api so the session cookies, Path=/api, are sent), WebSocket only (so the
 // browser always sends Origin), on the app's own HTTP server. Returns { hub, close }.
-function attachDuel(httpServer, { verify, db, now, rng, log = message => console.warn('[duel]', message) }) {
+function attachDuel(httpServer, { verify, db, now, rng, practice = false, log = message => console.warn('[duel]', message) }) {
   const io = new Server(httpServer, {
     path: '/api/socket.io', transports: ['websocket'], serveClient: false, maxHttpBufferSize: 4096,
     destroyUpgrade: false, // other WebSocket upgrades on this server (Vite's hot reload) are not ours to close
   });
-  const hub = makeDuelHub({ now, rng, loadGear: makeGearLoader(db), saveResult: makeResultSaver(db, log), log: message => log(message) });
+  // practice duels: only when asked for (the local dev server) and never on a Render deployment
+  const hub = makeDuelHub({ now, rng, loadGear: makeGearLoader(db), saveResult: makeResultSaver(db, log), log: message => log(message), practice: practice && !process.env.RENDER });
   io.use(async (socket, next) => {
     try {
       const profile = await verify(socket.handshake.headers);
@@ -272,7 +303,7 @@ function attachDuel(httpServer, { verify, db, now, rng, log = message => console
     const { id, full_name: fullName } = socket.data.profile;
     const conn = { id: socket.id, user: { id, name: fullName || 'A coworker' }, available: socket.handshake.auth?.available !== false, emit: (e, d) => socket.emit(e, d) };
     hub.connect(conn);
-    for (const event of ['duel:available', 'duel:challenge', 'duel:answer', 'duel:cancel', 'duel:input', 'duel:move']) {
+    for (const event of ['duel:available', 'duel:challenge', 'duel:answer', 'duel:cancel', 'duel:input', 'duel:move', 'duel:practice']) {
       socket.on(event, async (payload, ack) => {
         const result = await hub.handle(conn, event, payload);
         if (result && typeof ack === 'function') ack(result);

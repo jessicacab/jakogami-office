@@ -26,8 +26,9 @@ function makeApi(env, dependencies = {}) {
   let realtime = null;
   api.startBackgroundJobs = () => worker.start();
   api.stopBackgroundJobs = () => { worker.stop(); realtime?.close(); realtime = null; };
-  // Duels (server/duel.js) share the app's HTTP server; call once it exists (server/index.js, vite.config.js).
-  api.attachRealtime = httpServer => { if (httpServer && !realtime) realtime = attachDuel(httpServer, { verify: auth.verifySocket, db, ...dependencies.duel }); return realtime; };
+  // Duels (server/duel.js) share the app's HTTP server; call once it exists. `options.practice` turns on practice duels
+  // against a bot: only vite.config.js does that, for `npm run dev`.
+  api.attachRealtime = (httpServer, options = {}) => { if (httpServer && !realtime) realtime = attachDuel(httpServer, { verify: auth.verifySocket, db, ...dependencies.duel, ...options }); return realtime; };
   api.disable('x-powered-by');
   api.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   api.use((req, res, next) => {

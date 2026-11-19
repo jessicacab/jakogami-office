@@ -11,14 +11,14 @@ import { makeDuelHub, makeGearLoader } from './duel.js';
 const A = '11111111-1111-1111-1111-111111111111', B = '22222222-2222-2222-2222-222222222222', C = '33333333-3333-3333-3333-333333333333';
 const GEAR = { outfit: 'outfit-ember', armor: 'armor-solar', pet: 'pet-sprout' };
 
-function fixture({ gear = {}, failGear = false } = {}) {
+function fixture({ gear = {}, failGear = false, practice = false } = {}) {
   let time = 1_000_000;
   const saved = [], logs = [];
   const loadGear = async ids => {
     if (failGear) throw new Error('down');
     return new Map(ids.map(id => [id, { equipped: gear[id] ?? {}, attributes: characterAttributes(gear[id]).total }]));
   };
-  const hub = makeDuelHub({ now: () => time, rng: () => .5, loadGear, saveResult: async r => { saved.push(r); }, log: m => logs.push(m) });
+  const hub = makeDuelHub({ now: () => time, rng: () => .5, loadGear, saveResult: async r => { saved.push(r); }, log: m => logs.push(m), practice });
   const conn = (userId, name, available = true) => {
     const c = { id: `${userId}:${Math.random()}`, user: { id: userId, name }, available, got: [], emit(event, data) { c.got.push([event, data]); } };
     c.last = event => c.got.filter(([e]) => e === event).at(-1)?.[1];
@@ -253,4 +253,36 @@ test('moves: only the fighting connection, only during the fight, limited in spe
   f.advance(50);
   const x = c.last('duel:state').pos[0][0];
   assert.ok(x > -3 && x < -2.5, `moved only a step: ${x}`);
+});
+
+test('practice duels are off unless the hub is made for local development', async () => {
+  const f = fixture(), a = f.conn(A, 'Ana');
+  assert.equal(a.last('duel:hello').practice, false);
+  const res = await f.hub.handle(a, 'duel:practice', { weapon: 'weapon-katana' });
+  assert.equal(res.ok, false);
+  assert.match(res.error, /only available when running locally/);
+  assert.equal(f.hub._state.matches.size, 0);
+});
+
+test('practice: starts at once against the bot, which moves and fights; your weapon can be overridden; never saved', async () => {
+  const f = fixture({ practice: true }), a = f.conn(A, 'Ana'), c = f.conn(C, 'Cara');
+  assert.equal(a.last('duel:hello').practice, true);
+  assert.match((await f.hub.handle(a, 'duel:practice', { weapon: 'not-a-weapon' })).error, /Unknown weapon/);
+  assert.match((await f.hub.handle(a, 'duel:practice', { weapon: 'outfit-tide' })).error, /Unknown weapon/);
+  const res = await f.hub.handle(a, 'duel:practice', { weapon: 'weapon-katana', mine: 'weapon-pistol', skill: 'skilled' });
+  assert.equal(res.ok, true, res.error);
+  const start = a.last('duel:start');
+  assert.equal(start.mine, 0);
+  assert.equal(start.fighters[1].name, 'Sparring Bot');
+  assert.equal(start.fighters[0].stats.weapon.model, 'pistol');
+  assert.equal(start.fighters[1].stats.weapon.model, 'sword');
+  assert.equal(c.last('duel:start').mine, null, 'others can watch it');
+  assert.ok(c.last('duel:online').find(o => o.userId === A).busy, 'you are busy while practising');
+  f.advance(DUEL_TIME.intro * 1000 + 3000);
+  assert.notDeepEqual(a.last('duel:state').pos[1], [3, 0], 'the bot moved');
+  f.advance(120000);
+  assert.ok(a.all('duel:event').some(e => e.who === 1 && e.kind === 'windup'), 'the bot attacked');
+  assert.ok(a.last('duel:end'), 'it ended');
+  await flush();
+  assert.equal(f.saved.length, 0, 'practice is never saved to records');
 });

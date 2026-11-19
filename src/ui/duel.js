@@ -3,6 +3,7 @@ import { setView } from '../camera/controller.js';
 import { buildBody, disposeBody } from '../character/rig.js';
 import { DEFAULT_SPEC, normalizeSpec, randomSpec } from '../character/spec.js';
 import { BLAST, DUEL_LIMITS, DUEL_TIME } from '../config/duel.js';
+import { MARKETPLACE_CATALOG } from '../config/marketplace.js';
 import { seededRandom } from '../core/util.js';
 import { equipPerson } from '../people/equipment.js';
 import { employeeById, simRole } from '../people/roster.js';
@@ -15,7 +16,7 @@ import { duel, duelEnd, duelEvent, duelFight, duelState, startDuel, stopDuel } f
 import { people } from '../sim/state.js';
 import { disposeArena } from '../world/arena.js';
 import { $, keyed } from './dom.js';
-import { arenaScene, enterArena, initDuelArena, leaveArena, reconcile, stopDuelArena, updateDuelArena, viewing } from './duelArena.js';
+import { arenaScene, enterArena, initDuelArena, leaveArena, reconcile, shake, stopDuelArena, updateDuelArena, viewing } from './duelArena.js';
 import { renderPerson, selected } from './person.js';
 
 /* ================= Duel: challenges, the panel and the fight HUD ================= */
@@ -31,7 +32,7 @@ const ui = {
   profile: null, me: null, online: [], byId: new Map(), status: 'connecting', available: true,
   records: new Map(), recordsAt: new Map(), recordsNote: '', wanted: new Set(), recordsTimer: null, blocked: new Map(),
   invite: null, outgoing: null, note: '', noteUntil: 0, guarding: false, cd: { strike: 0, blast: 0, total: { strike: 1, blast: 1 } },
-  resume: null, shown: new Map(), markers: new Map(), personById: new Map(), acc: 0, listeners: [], active: false,
+  resume: null, shown: new Map(), markers: new Map(), personById: new Map(), acc: 0, listeners: [], active: false, practice: false,
 };
 const first = name => String(name || '').split(' ')[0] || 'They';
 const now = () => performance.now();
@@ -86,7 +87,9 @@ function officeOf(userId) {
   if (userId === ui.me && player.person?.id === -1 && player.person.body.root.visible) return player.person; // your own character
   return people.find(q => q.userId === userId && !q.helper) ?? null;
 }
+const BOT_ID = 'practice-bot'; // the sparring bot in practice duels (server/duel.js, local only)
 function specFor(userId) {
+  if (userId === BOT_ID) return randomSpec('Developer', seededRandom(BOT_ID));
   const here = officeOf(userId);
   if (here) return here.spec;
   if (userId === ui.me) return player.spec;
@@ -153,22 +156,33 @@ function setDeadline(m, v) { m.deadline = now() + (v.phase === 'fight' ? v.endsI
 // ----- effects for a server event, in the arena, if you are looking at that duel
 const at = (p, y) => new THREE.Vector3(p.pos.x, y, p.pos.z);
 const handsOf = p => new THREE.Vector3(p.pos.x + Math.sin(p.face) * .35, 1.05, p.pos.z + Math.cos(p.face) * .35);
+// Where a weapon's tip is right now (blade end, muzzle), or near the hands without a weapon.
+const tipOf = f => (f.body.weaponTip ? f.body.weaponTip.getWorldPosition(new THREE.Vector3()) : handsOf(f));
+// Where a melee hit lands: on the target's chest, on the side facing the attacker.
+const impactOn = (target, from) => { const d = Math.hypot(from.pos.x - target.pos.x, from.pos.z - target.pos.z) || 1; return at(target, 1.15).add(new THREE.Vector3((from.pos.x - target.pos.x) / d * .22, 0, (from.pos.z - target.pos.z) / d * .22)); };
 function effects(m, e) {
   if (m.mine === e.who && e.kind === 'windup') { const k = e.act === 'blast' ? 'blast' : 'strike'; ui.cd[k] = now() + ui.cd.total[k]; }
   if (viewing() !== m) return;
-  const into = arenaScene(), a = m.fighters[e.who], b = m.fighters[1 - e.who];
+  const into = arenaScene(), a = m.fighters[e.who], b = m.fighters[1 - e.who], w = m.stats[e.who].weapon ?? {};
+  const gun = w.kind === 'gun', color = a.body.weaponColor ?? '#ffffff', mine = m.mine !== null;
+  // a landed hit jolts the camera for whoever is in it (harder for a crit)
+  if (mine && ['hit', 'guarded', 'blast'].includes(e.kind)) shake(e.crit ? .32 : e.kind === 'guarded' ? .12 : .2);
   // numbers fan out a little so quick hits do not stack on top of each other
   const over = at(b, 1.7 + Math.random() * .2).add(new THREE.Vector3((Math.random() - .5) * .5, 0, (Math.random() - .5) * .5)), dmg = Math.round(e.dmg ?? 0);
   if (e.kind === 'windup' && e.act === 'blast') spawnBurst(handsOf(a), 0x8cc7ea, .4, into);
-  else if (e.kind === 'fire') {
-    const bolt = e.act === 'bolt', color = bolt ? 0xffb347 : 0x8cc7ea; // a gun's bolt is orange, a Focus Blast blue
-    spawnOrb(new THREE.Vector3(e.from[0], bolt ? 1.25 : 1.1, e.from[1]), new THREE.Vector3(e.aim[0], bolt ? 1.25 : 1.1, e.aim[1]), e.ms / 1000, color, into);
-    if (bolt) spawnBurst(handsOf(a).setY(1.25), 0xffb347, .3, into);
-  }
+  else if (e.kind === 'fire' && e.act === 'bolt') { // out of the muzzle, with a flash, straight at where they stood
+    const muzzle = tipOf(a);
+    spawnBurst(muzzle, color, .45, into); spawnBurst(muzzle, 0xffffff, .2, into);
+    spawnOrb(muzzle, new THREE.Vector3(e.aim[0], 1.15, e.aim[1]), e.ms / 1000, color, into, true);
+  } else if (e.kind === 'fire') spawnOrb(handsOf(a), new THREE.Vector3(e.aim[0], 1.1, e.aim[1]), e.ms / 1000, 0x8cc7ea, into);
   else if (e.kind === 'blast') { spawnBurst(at(b, 1.15), 0x8cc7ea, .9, into); spawnNumber(over, `-${dmg}${e.crit ? '!' : ''}`, '#8cc7ea', into); }
   else if (e.kind === 'fizzle') spawnNumber(over, 'Dodged', '#a7d6be', into);
-  else if (e.kind === 'hit') { spawnBurst(at(b, 1.15), e.crit ? 0xffd36b : 0xffffff, e.crit ? .8 : .5, into); spawnNumber(over, `-${dmg}${e.crit ? '!' : ''}`, e.crit ? '#ffd36b' : '#ffffff', into); }
-  else if (e.kind === 'guarded') { spawnBurst(at(b, 1.15), 0x9fb3c0, .35, into); spawnNumber(over, `-${dmg}`, '#c7d3db', into); }
+  else if (e.kind === 'hit') { // a blade's spark where it meets them; a bolt bursts on them
+    const spot = gun ? at(b, 1.15) : impactOn(b, a);
+    spawnBurst(spot, e.crit ? 0xffd36b : gun ? color : 0xffffff, e.crit ? .9 : .55, into);
+    if (!gun && w.model !== 'fists') spawnBurst(spot, color, .3, into);
+    spawnNumber(over, `-${dmg}${e.crit ? '!' : ''}`, e.crit ? '#ffd36b' : '#ffffff', into);
+  } else if (e.kind === 'guarded') { spawnBurst(gun ? at(b, 1.15) : impactOn(b, a), 0x9fb3c0, .4, into); spawnNumber(over, `-${dmg}`, '#c7d3db', into); }
   else if (e.kind === 'miss') spawnNumber(over, 'Miss', '#c7d3db', into);
   else if (e.kind === 'dodge') spawnNumber(over, 'Dodge', '#a7d6be', into);
   else if (e.kind === 'parry') { spawnBurst(at(b, 1.15), 0xffffff, .7, into); spawnNumber(over, e.act === 'bolt' ? 'Deflected!' : 'Parry!', '#ffffff', into); }
@@ -185,7 +199,7 @@ function guard(on) {
 
 // ----- records
 function wantRecords(ids, force = false) {
-  for (const id of ids) if (id && (force || now() - (ui.recordsAt.get(id) ?? -Infinity) > 60000)) ui.wanted.add(id);
+  for (const id of ids) if (id && id !== BOT_ID && (force || now() - (ui.recordsAt.get(id) ?? -Infinity) > 60000)) ui.wanted.add(id);
   if (!ui.wanted.size || ui.recordsTimer) return;
   ui.recordsTimer = setTimeout(async () => {
     ui.recordsTimer = null;
@@ -235,7 +249,22 @@ function renderPanel() {
   }));
   $('duelNobody').hidden = others.length > 0;
 }
+// Practice (local only): the server says whether it allows it; then the panel offers the bot, its weapon and skill,
+// and a weapon for you (any weapon, owned or not: it is only for trying things out on your own computer).
+function renderPractice() {
+  const box = $('duelPractice'); box.hidden = !ui.practice;
+  if (!ui.practice || $('practiceBot').options.length) return;
+  const weapons = MARKETPLACE_CATALOG.filter(i => i.slot === 'weapon').map(i => new Option(i.name, i.id));
+  $('practiceMine').replaceChildren(new Option('What you have equipped', ''), new Option('Fists', 'fists'), ...weapons.map(o => new Option(o.text, o.value)));
+  $('practiceBot').replaceChildren(new Option('Fists', 'fists'), ...weapons);
+}
+async function startPractice() {
+  const mine = $('practiceMine').value, res = await askDuel('duel:practice', { weapon: $('practiceBot').value, skill: $('practiceSkill').value, ...(mine ? { mine } : {}) });
+  if (!res.ok) { note(res.error || 'Could not start practice'); render(); }
+}
+
 function render() {
+  renderPractice();
   if ($('duelDialog').open) renderPanel();
   $('duelBadge').hidden = !ui.invite;
   if (selected) renderPerson();
@@ -383,8 +412,8 @@ function updateDuelUi(dt) {
 // ----- server events
 function initEvents() {
   const byId = id => duel.matches.find(m => m.id === id);
-  onDuel('duel:hello', ({ you, matches }) => {
-    ui.me = you;
+  onDuel('duel:hello', ({ you, matches, practice }) => {
+    ui.me = you; ui.practice = !!practice; render();
     const ids = new Set(matches.map(v => v.id));
     for (const m of [...duel.matches]) if (!ids.has(m.id)) stopDuel(m); // ended while we were away
     matches.forEach(begin);
@@ -473,6 +502,7 @@ function initDuel(profile) {
   listen($('duelCancel'), 'click', cancel);
   listen($('duelWatch'), 'click', () => { const m = featured(); if (m) enterArena(m); });
   listen($('duelLeave'), 'click', leaveArena);
+  listen($('practiceStart'), 'click', startPractice);
   listen($('pDuel'), 'click', () => { if (selected?.userId) challenge(selected.userId); });
   listen($('walkBtn'), 'click', () => { walkAsSelf(); setView('third'); });
   connectDuel({ onStatus: status => { ui.status = status; render(); } });

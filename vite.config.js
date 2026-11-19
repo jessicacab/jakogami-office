@@ -6,14 +6,15 @@ import { makeApi } from './server/api.js';
 // from .env here and never reach the browser bundle. Restart the dev server after changing server/ code.
 const bff = mode => {
   // a block body on purpose: Vite treats a function returned from these hooks as a post hook
-  const mount = server => {
+  const mount = (server, local) => {
     const api = makeApi({ ...loadEnv(mode, process.cwd(), ''), ...process.env });
     server.middlewares.use('/api', api);
-    api.attachRealtime(server.httpServer); // duels (server/duel.js); no HTTP server in middleware mode
+    // duels (server/duel.js); no HTTP server in middleware mode. Practice duels against a bot: `npm run dev` only.
+    api.attachRealtime(server.httpServer, { practice: local });
     api.startBackgroundJobs();
     server.httpServer?.once('close', () => api.stopBackgroundJobs());
   };
-  return { name: 'office-sim-bff', configureServer: mount, configurePreviewServer: mount };
+  return { name: 'office-sim-bff', configureServer: server => mount(server, true), configurePreviewServer: server => mount(server, false) };
 };
 
 // `npm run preview` serves the production build (dist/). Hosts such as Render pass the port in $PORT and

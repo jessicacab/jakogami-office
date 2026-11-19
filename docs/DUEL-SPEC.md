@@ -289,3 +289,26 @@ A fourth Marketplace slot, **weapon**, held in the right hand. Weapons are the m
 - Checked: engine test (blast and bolt cleared mid-air, melee still hits, no acting mid-air, cooldown); in headless browsers six jumps reached the other screen and five pistol bolts were jumped over.
 - **Removed** the same day at the user's request. Its balance effect is gone with it: against an average player with a full set and a gun, a skilled player in base gear is back to about 15–17%.
 - While investigating "can't walk up to the opponent" (reported on the Render deployment), the real cause turned out to be unrelated to the jump: the browser compared the server's (slightly delayed) position for you with where you are *now* and pulled you back whenever they differed by 0.6 m, which on a real network was most of the time. Now it compares with the positions it recently sent and only snaps back when the server really corrected you (`reconcile` in `ui/duelArena.js`). Verified with a simulated 150 ms and 300 ms delay: both fighters walk right up to each other.
+
+## Weapon motion and local practice (2026-11-19)
+
+**Weapons look like they hit.** Blades leave the fist angled forward like a real grip; guns line up with the arm
+(`character/equipment.js`), and every weapon has a tip (blade end, hammer head, muzzle).
+- Sword: cocked back over the head during the wind-up, then a diagonal slash down through the opponent, landing as the
+  server's hit lands, with a light trail behind the blade tip and a spark where it meets them. Greatsword and hammer:
+  the same, two-handed. Staff: drawn back, then a forward thrust.
+- Guns: the arm comes up and aims at the opponent (the other hand steadying it), the bolt leaves the muzzle with a flash
+  and a glowing trail, and the shot kicks the arm back.
+- A hit you deal or take shakes the camera briefly (not for people who turn off motion).
+- Poses: `people/animation.js` (`duelSlash`, `duelSlashFollow`, `duelThrust`, `duelThrustHit`, `duelAim`, `duelShoot`,
+  `duelReadyBlade`, `duelReadyGun`), chosen by `sim/duel.js` from the fighter's weapon and how far through the wind-up
+  or follow-through it is; trails and shake in `ui/duelArena.js`; muzzle flash and sparks in `ui/duel.js`.
+
+**Practice against a bot, local only.** With `npm run dev`, the Duel panel shows **Practice · local only**: pick your
+weapon (any weapon, owned or not), the bot's weapon and its skill, and the duel starts at once on the rooftop against
+the Sparring Bot (the balance-test bot, `server/duelBots.js`, playing live). Others can watch. Results are never saved.
+- Only `vite.config.js` turns it on, for the dev server (`configureServer`); `npm run preview` and the production server
+  (`server/index.js`, which Render runs) never do, and the hub also refuses it when `RENDER` is set. Without it the
+  server answers "Practice duels are only available when running locally" and the panel section stays hidden.
+- Tests: `server/duel.test.js` (off by default; on: starts at once, the bot moves and attacks, your weapon can be
+  overridden, nothing saved).

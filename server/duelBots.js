@@ -1,6 +1,6 @@
 import { characterAttributes } from '../src/config/marketplace.js';
 import { BLAST, DUEL_TICK_MS, MOVE, WEAPONS, duelStats } from '../src/config/duel.js';
-import { act, dist, makeFight, move, tick } from './duelEngine.js';
+import { act as actNow, dist, makeFight, move, tick } from './duelEngine.js';
 
 // Bot fighters for the balance test (duelBalance.test.js): they play a whole duel against the real engine, moving
 // and all, so a change to the rules or the catalog shows up as a change in who wins. Not used by the running app.
@@ -28,7 +28,9 @@ function mulberry32(seed) {
   return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-function play(fight, side, bot, skill, now, rng) {
+// One bot's moves for this tick. `onEvent` hears what it did (wind-ups, guards), for practice duels (server/duel.js).
+function play(fight, side, bot, skill, now, rng, onEvent = () => {}) {
+  const act = (f, sd, kind, t) => { const ev = actNow(f, sd, kind, t); if (ev) onEvent(ev); return ev; };
   const me = fight.f[side], them = fight.f[1 - side], d = Math.max(1e-6, dist(me.pos, them.pos));
   const mine = me.stats.weapon ?? WEAPONS.fists, theirs = them.stats.weapon ?? WEAPONS.fists;
   // something fired at me: maybe step out of its way (bolts are faster: harder), else guard against a bolt
@@ -99,4 +101,4 @@ function winRate(statsA, statsB, skillA, skillB, n = 2000, seed = 1) {
   return { win: won / n, draw: drawn / n, ko: ko / n };
 }
 
-export { BUILDS, SKILL, mulberry32, simulate, winRate };
+export { BUILDS, SKILL, mulberry32, play as botTurn, simulate, winRate };

@@ -89,11 +89,20 @@ body.tp #duelStack,body.fp #duelStack{top:calc(96px + env(safe-area-inset-top,0p
 .duel-how summary{cursor:pointer;font-weight:700}
 .duel-how ul{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 
+/* practice (local only) */
+.duel-practice{margin:16px 20px 0;padding:14px;border:1px dashed var(--line);display:grid;gap:10px;background:var(--panel)}
+.duel-practice .duel-h,.duel-practice .duel-note{margin:0}
+.duel-practice code{font:500 12px var(--f-mono)}
+.duel-practice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.duel-practice-grid label{display:grid;gap:5px;font:600 12px/1.2 var(--f-body);color:var(--muted)}
+.duel-practice-grid select{font:500 13px var(--f-body);color:var(--ink);background:var(--chip);border:1px solid var(--line);padding:7px 8px;min-width:0}
+#practiceStart{justify-self:start}
 @media (max-width:760px){
   #duelStack{top:calc(76px + env(safe-area-inset-top,0px))}
   body.tp #duelStack,body.fp #duelStack{top:calc(84px + env(safe-area-inset-top,0px))}
   .duel-header{padding:16px}
-  .duel-me,.duel-list,.duel-h,.duel-note,.duel-empty,.duel-how{margin-left:16px;margin-right:16px}
+  .duel-me,.duel-list,.duel-h,.duel-note,.duel-empty,.duel-how,.duel-practice{margin-left:16px;margin-right:16px}
+  .duel-practice .duel-h,.duel-practice .duel-note{margin-left:0;margin-right:0}
 }
 
 /* In the arena (ui/duelArena.js): the office's panels are put away; the fight HUD stays, under the countdown banner. */

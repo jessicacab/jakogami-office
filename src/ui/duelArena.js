@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ARENA, DUEL_TIME, MOVE } from '../config/duel.js';
 import { sendDuel } from '../persistence/duel.js';
+import { spawnTrail } from '../render/duelFx.js';
 import { renderer } from '../render/renderer.js';
 import { duel } from '../sim/duel.js';
 import { arena, buildArena, updateArena } from '../world/arena.js';
@@ -15,6 +16,7 @@ import { $ } from './dom.js';
 const view = {
   match: null, keys: new Set(), stick: { id: null, x: 0, y: 0, ox: 0, oy: 0 }, sentAt: 0, sent: null, trail: [],
   pos: new THREE.Vector3(), look: new THREE.Vector3(), goal: new THREE.Vector3(), aim: new THREE.Vector3(), orbit: 0, prepared: false, listeners: [],
+  shake: 0, tip: new THREE.Vector3(),
 };
 const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
 const OFFICE_KEYS = new Set([...MOVE_KEYS, 'q', 'e', '+', '=', '-', '_', ' ']); // the office camera's keys: not while here
@@ -75,7 +77,26 @@ function placeCamera(m, dt, introLeft) {
     const k = 1 - Math.exp(-dt * 6);
     view.pos.lerp(view.goal, k); view.look.lerp(view.aim, k);
   }
-  arena.camera.position.copy(view.pos); arena.camera.lookAt(view.look);
+  arena.camera.position.copy(view.pos);
+  // a hit you dealt or took jolts the camera for a moment
+  if (view.shake > 0) {
+    view.shake = Math.max(0, view.shake - dt * 1.6);
+    const a = view.shake * view.shake * 2.2;
+    arena.camera.position.x += (Math.random() - .5) * a; arena.camera.position.y += (Math.random() - .5) * a;
+  }
+  arena.camera.lookAt(view.look);
+}
+function shake(amount) { if (view.match && !matchMedia('(prefers-reduced-motion: reduce)').matches) view.shake = Math.max(view.shake, amount); }
+
+// While a blade or the staff is mid-swing (late in the wind-up, and through the follow-through), lay a trail behind its tip.
+function trails(m) {
+  m.fighters.forEach((f, i) => {
+    const w = m.stats[i].weapon, tip = f.body.weaponTip;
+    if (!tip || !w || w.kind !== 'melee' || w.model === 'fists') return;
+    const late = m.wind[i] && m.wind[i].act === 'strike' && m.wind[i].t / m.wind[i].dur > .62;
+    const follow = m.swing[i] !== null && m.swing[i] < .22 && m.lastAct[i] === 'strike';
+    if (late || follow) spawnTrail(tip.getWorldPosition(view.tip), f.body.weaponColor ?? '#ffffff', arena.scene);
+  });
 }
 
 // Your fighter, from WASD or the touch stick, locked on to the other one: W/up closes in, S backs off, A/D circle.
@@ -123,6 +144,7 @@ function updateDuelArena(dt, now, introLeft) {
   const m = view.match; if (!m) return;
   updateArena(dt);
   if (m.mine !== null && m.phase === 'fight') steer(m, dt, now);
+  trails(m);
   placeCamera(m, dt, introLeft);
   showStick(matchMedia('(pointer: coarse)').matches && m.mine !== null && m.phase === 'fight');
 }
@@ -184,4 +206,4 @@ function stopDuelArena() {
   view.listeners.length = 0;
 }
 
-export { arenaScene, arenaTarget, enterArena, initDuelArena, leaveArena, reconcile, stopDuelArena, updateDuelArena, viewing };
+export { arenaScene, arenaTarget, enterArena, initDuelArena, leaveArena, reconcile, shake, stopDuelArena, updateDuelArena, viewing };
