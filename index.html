@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Jakogami</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Silkscreen:wght@400;700&family=Unbounded:wght@700&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<section id="authGate" aria-labelledby="loginTitle">
+  <!-- The rooftop at dusk (the duel arena's world): sky, sun, skyline, the helipad and the crew. Decoration only. -->
+  <div class="gate-sky" aria-hidden="true">
+    <span class="gate-sun"></span>
+    <div class="gate-city">
+      <i style="left:2%;width:7%;height:46%"></i><i style="left:10%;width:4.5%;height:30%"></i>
+      <i style="left:30%;width:6.5%;height:58%"></i><i style="left:37.5%;width:5%;height:36%"></i>
+      <i style="left:46%;width:7.5%;height:66%"></i><i style="left:54.5%;width:5%;height:40%"></i>
+      <i style="left:73%;width:6%;height:44%"></i><i style="left:81%;width:8%;height:62%"></i><i style="left:90%;width:8%;height:50%"></i>
+    </div>
+    <span class="gate-pad"></span>
+    <div class="gate-crew">
+      <span class="gate-guy" style="--skin:#f2c39b;--shirt:#2fb5a0"></span>
+      <span class="gate-guy" style="--skin:#8a5a3c;--shirt:#e0524a"></span>
+      <span class="gate-guy" style="--skin:#f7d6b5;--shirt:#3a6df0"></span>
+      <span class="gate-guy" style="--skin:#c98e63;--shirt:#f7c948"><i class="gate-sword"></i></span>
+    </div>
+  </div>
+  <div class="gate">
+    <header class="gate-bar">
+      <span>JAKOGAMI · v0.2</span>
+      <span class="gate-coins"><span class="gate-coin" aria-hidden="true"></span>3,000 welcome coins</span>
+    </header>
+    <div class="gate-main">
+      <div class="gate-story">
+        <span class="gate-eyebrow">Avensetech · after hours</span>
+        <p class="gate-mark">JAKOGAMI</p>
+        <h2 class="gate-tag">Clock in. Level up.</h2>
+        <p class="gate-sub">Bored? Have fun, but make it productive. Finished Jira tickets earn coins for gear, and the rooftop is where duels get settled.</p>
+      </div>
+      <div class="gate-card">
+        <h1 id="loginTitle">Player login</h1>
+        <p class="gate-intro">Use your Avensetech dashboard account.</p>
+        <p id="authStatus" role="status" aria-live="polite">Checking your session…</p>
+        <form id="loginForm" hidden>
+          <div class="login-field">
+            <label for="loginEmail">Work email</label>
+            <input id="loginEmail" name="email" type="email" autocomplete="username" placeholder="you@avense-tech.com" required maxlength="254">
+          </div>
+          <div class="login-field">
+            <label for="loginPassword">Password</label>
+            <div class="password-field">
+              <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required maxlength="1024">
+              <button id="passwordToggle" type="button" aria-controls="loginPassword" aria-pressed="false">Show</button>
+            </div>
+          </div>
+          <p id="loginError" role="alert"></p>
+          <button id="loginSubmit" type="submit">Press start</button>
+        </form>
+        <button id="retryLogout" type="button" hidden>Retry sign out</button>
+        <p class="gate-fine">Need a new password? Change it in the internal dashboard.</p>
+      </div>
+    </div>
+    <footer class="gate-xp" aria-hidden="true">
+      <span>Next level: finish a Jira ticket</span>
+      <span class="gate-xp-bar"><i></i></span>
+    </footer>
+  </div>
+</section>
+<div id="officeApp" hidden inert>
+<div id="stage" aria-label="3D office floor"></div>
+
+<!-- Top left: the current office time -->
+<section class="card" id="hud" aria-label="Office time">
+  <div class="hud-header">
+    <div class="hud-identity">
+      <div class="brand"><span class="eyebrow">Avensetech</span><h1>Jakogami</h1></div>
+      <span id="accountName"></span>
+    </div>
+    <button id="signOut" type="button" aria-label="Sign out" title="Sign out">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 4H4v16h5m6-12 4 4-4 4m-7-4h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <div class="clock">
+    <div id="clock">09:25</div>
+    <div id="phase">Day 1<br>Morning focus</div>
+  </div>
+</section>
+
+<!-- Bottom centre: the everyday actions; the rest sits in pop-ups -->
+<nav class="card" id="dock" aria-label="Controls">
+  <button type="button" class="dock-btn" id="tLights" aria-label="Office lights" aria-pressed="true" title="Turn office lights off">Lights on</button>
+  <button type="button" class="dock-btn" id="jiraBtn" aria-haspopup="dialog" aria-controls="jiraDialog" title="Earn coins from completed Jira tickets">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><span>Earn coins</span>
+  </button>
+  <div class="future-feature">
+    <button type="button" class="dock-btn" id="marketplaceBtn" aria-haspopup="dialog" aria-controls="marketDialog" title="Marketplace">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l2-5h14l2 5M4 10v10h16V10M9 20v-6h6v6M3 9h18"/></svg><span>Marketplace</span>
+    </button>
+  </div>
+  <button type="button" class="dock-btn" id="walkBtn" title="Walk around the office as yourself">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4.5" r="2"/><path d="M10 21l2-6 3 3v3M9 12l2-4 4 1 2 3M11 8l-1 5 2 2"/></svg><span>Walk</span>
+  </button>
+  <button type="button" class="dock-btn" id="duelBtn" aria-haspopup="dialog" aria-controls="duelDialog" title="Duel a coworker">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l14 14M19 3L5 17M3 14l7 7M14 21l7-7M3 21l3-3M21 21l-3-3"/></svg><span>Duel</span><b class="dock-badge" id="duelBadge" hidden>!</b>
+  </button>
+  <div class="pop-wrap">
+    <button type="button" class="dock-btn" data-pop="goPop" aria-expanded="false" aria-controls="goPop">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Go to</span>
+    </button>
+    <div class="card pop" id="goPop" hidden role="menu" aria-label="Jump to an area">
+      <div class="pop-title">Jump to</div>
+      <div class="pop-grid">
+        <button type="button" class="btn" data-go="desks" role="menuitem">Desks</button>
+        <button type="button" class="btn" data-go="management" role="menuitem">Management Office</button>
+        <button type="button" class="btn" data-go="lounge" role="menuitem">Lounge</button>
+        <button type="button" class="btn" data-go="kitchen" role="menuitem">Kitchen</button>
+      </div>
+    </div>
+  </div>
+  <div class="pop-wrap">
+    <button type="button" class="dock-btn icon-only" data-pop="setPop" aria-expanded="false" aria-controls="setPop" aria-label="Settings" title="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    </button>
+    <div class="card pop" id="setPop" hidden aria-label="Settings">
+      <div class="pop-title">Settings</div>
+      <div class="pop-row">
+        <label class="pop-lbl" for="staff">People</label>
+        <input type="range" id="staff" min="8" max="70" value="40">
+        <span id="staffVal">40</span>
+      </div>
+      <div class="pop-row">
+        <span class="pop-lbl">Show</span>
+        <div class="seg" role="group" aria-label="Display toggles">
+          <button type="button" id="tWalls" aria-pressed="false">Full walls</button>
+          <button type="button" id="tLabels" aria-pressed="true">Labels</button>
+        </div>
+      </div>
+      <div class="pop-row">
+        <span class="pop-lbl">Camera</span>
+        <div class="seg" role="group" aria-label="Turn and zoom the camera">
+          <button type="button" data-cam="left" aria-label="Turn left" title="Turn left (Q)">↺</button>
+          <button type="button" data-cam="right" aria-label="Turn right" title="Turn right (E)">↻</button>
+          <button type="button" data-cam="in" aria-label="Zoom in" title="Zoom in (+)">＋</button>
+          <button type="button" data-cam="out" aria-label="Zoom out" title="Zoom out (−)">－</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pop-wrap help-wrap">
+    <button type="button" class="dock-btn icon-only" data-pop="helpPop" aria-expanded="false" aria-controls="helpPop" aria-label="Help" title="Help">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.2" r=".6"/></svg>
+    </button>
+    <div class="card pop pop-right" id="helpPop" hidden aria-label="Help">
+      <div class="pop-title">Getting around</div>
+      <dl class="keys">
+        <dt>Drag</dt><dd>move around</dd>
+        <dt>Right-drag · Shift-drag</dt><dd>turn and tilt</dd>
+        <dt>Wheel · pinch</dt><dd>zoom</dd>
+        <dt>WASD · arrows</dt><dd>move</dd>
+        <dt>Q · E</dt><dd>turn</dd>
+        <dt>H</dt><dd>hide controls</dd>
+        <dt>F</dt><dd>fullscreen</dd>
+      </dl>
+      <div class="pop-title">Walking and duels</div>
+      <dl class="keys">
+        <dt>Walk</dt><dd>walk as yourself · V first person · Esc exit</dd>
+        <dt>G</dt><dd>challenge who you look at</dd>
+        <dt>J · left click</dt><dd>strike</dd>
+        <dt>K · Shift · right click</dt><dd>guard (just in time: parry)</dd>
+        <dt>Q</dt><dd>Focus Blast</dd>
+        <dt>WASD (in the arena)</dt><dd>close in, back off, circle</dd>
+        <dt>Space</dt><dd>jump over blasts and bolts</dd>
+      </dl>
+      <p class="pop-note">Click an employee to see their status. Open Marketplace to customize your character; your equipped gear shapes your duels. A duel only starts when the other person accepts.</p>
+    </div>
+  </div>
+</nav>
+
+<dialog id="marketDialog" aria-labelledby="marketTitle">
+  <header class="market-header">
+    <div><div class="market-eyebrow">AVENSETECH / THE COLLECTION</div><h2 id="marketTitle">Marketplace<span class="market-season">VOL. 02</span></h2></div>
+    <div class="market-header-actions">
+      <div class="market-wallet" aria-label="Your coin balance"><span class="market-coin" aria-hidden="true">C</span><strong id="marketBalance">—</strong><span>coins</span></div>
+      <button id="marketClose" class="icon-btn" type="button" aria-label="Close marketplace" title="Close (Esc)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+    </div>
+  </header>
+  <div class="market-layout">
+    <aside class="market-character">
+      <div class="market-character-title"><span class="market-eyebrow">YOUR CHARACTER</span><span class="market-preview-badge" id="marketPreviewBadge">Equipped</span></div>
+      <h3 id="marketAccountName">Your collection</h3>
+      <div id="marketPreview"><span id="marketPreviewFallback">Loading character preview…</span><span class="market-drag-hint">Drag to rotate · scroll to zoom</span></div>
+      <p class="market-presence-note">Equipment changes your look, not your attendance or desk.</p>
+      <section class="market-attributes" aria-labelledby="marketAttributesTitle">
+        <div class="market-attributes-title"><h4 id="marketAttributesTitle">Character attributes</h4><span id="marketAttributesMode">Equipped stats</span></div>
+        <div id="marketAttributes" class="market-attribute-grid" aria-live="polite"></div>
+        <p>Base 10 each + equipped item bonuses. In duels, STR adds health and damage, AGI speed and dodging, INT Focus Blast, mana and critical hits.</p>
+      </section>
+      <button id="marketResetPreview" type="button" class="btn" hidden>Show equipped look</button>
+      <div id="marketSlots" class="market-slots" aria-label="Equipped items"></div>
+      <div class="market-welcome"><strong>Make it yours.</strong><p>Every account starts with 3,000 coins once. Build your collection, one piece at a time.</p><span>Earn more through verified Jira work in Earn coins.</span></div>
+    </aside>
+    <section class="market-collection" aria-label="Shop and inventory">
+      <div class="market-collection-head"><div><h3>A new look for your workday.</h3><p>Outfits, armor, a companion, and something to duel with.</p></div><button id="marketRefresh" class="btn" type="button">Refresh</button></div>
+      <div class="market-filters" role="group" aria-label="Filter marketplace">
+        <button type="button" data-market-filter="all" aria-pressed="true">All items</button>
+        <button type="button" data-market-filter="outfit" aria-pressed="false">Outfits</button>
+        <button type="button" data-market-filter="armor" aria-pressed="false">Armor</button>
+        <button type="button" data-market-filter="pet" aria-pressed="false">Pets</button>
+        <button type="button" data-market-filter="weapon" aria-pressed="false">Weapons</button>
+        <button type="button" data-market-filter="owned" aria-pressed="false">My inventory</button>
+      </div>
+      <p id="marketStatus" role="status" aria-live="polite">Loading your collection…</p>
+      <p id="marketError" role="alert" hidden></p>
+      <div id="marketConfirm" class="market-confirm" hidden role="group" aria-label="Confirm purchase">
+        <div><strong id="marketConfirmTitle"></strong><p id="marketConfirmText"></p></div>
+        <div><button id="marketCancelBuy" type="button" class="btn">Cancel</button><button id="marketConfirmBuy" type="button" class="btn primary">Confirm purchase</button></div>
+      </div>
+      <div id="marketGrid" class="market-grid"></div>
+      <p class="market-footnote">Only equipped items add attributes. Purchases belong to your account. No real-money payments.</p>
+    </section>
+  </div>
+</dialog>
+
+<dialog id="duelDialog" aria-labelledby="duelTitle">
+  <header class="duel-header">
+    <div><div class="duel-eyebrow">AVENSETECH / THE RING</div><h2 id="duelTitle">Duel</h2></div>
+    <button id="duelClose" class="icon-btn" type="button" aria-label="Close duels" title="Close (Esc)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+  </header>
+  <section class="duel-me" aria-label="You">
+    <div class="duel-who"><strong id="duelMeName"></strong><span class="duel-meta" id="duelMeStats"></span><span class="duel-meta" id="duelMeRecord"></span></div>
+    <label class="duel-switch"><input type="checkbox" id="duelAvailable"><span>Available for duels</span></label>
+  </section>
+  <p id="duelConn" class="duel-note" role="status" hidden></p>
+  <p id="duelSetup" class="duel-note" role="alert" hidden></p>
+  <h3 class="duel-h">Online now</h3>
+  <ul id="duelOnline" class="duel-list"></ul>
+  <p id="duelNobody" class="duel-empty">Nobody else is online right now.</p>
+  <details class="duel-how">
+    <summary>How duels work</summary>
+    <ul>
+      <li>A duel starts only when the other person accepts. Turn off <b>Available for duels</b> and nobody can challenge you.</li>
+      <li><kbd>J</kbd> or left click: <b>Strike</b>. <kbd>K</kbd>, <kbd>Shift</kbd> or hold right click: <b>Guard</b>, which takes 30% of a strike. Start guarding just before a strike lands to <b>parry</b> it: no damage, and the striker is staggered.</li>
+      <li>Duels happen on the <b>office rooftop</b>. <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move you, always facing the other one: close in to strike (strikes reach about 1.8 m), back off to make theirs miss.</li>
+      <li><kbd>Q</kbd>: <b>Focus Blast</b>. Costs 50 mana and can't be guarded, but it flies to where they stood: step aside and it misses.</li>
+      <li><kbd>Space</kbd>: <b>Jump</b>. A Focus Blast or a gun's bolt that arrives while you're in the air flies under you. Melee still hits you, and you can't strike or guard mid-air.</li>
+      <li><b>Weapons</b> (Marketplace) change your strike: swords, a staff and a hammer reach further or hit harder; the pulse pistol and ion rifle fire bolts from across the helipad but slow you down. A bolt can be sidestepped, mostly stopped by a guard, or deflected by a perfectly timed one.</li>
+      <li>Gear tilts a fight, skill decides it: STR adds health and damage, AGI strikes faster and dodges more, INT strengthens Focus Blast, mana and critical hits.</li>
+      <li>A knockout wins. After 90 seconds, the higher health wins. Leaving for more than 10 seconds forfeits. No coins change hands.</li>
+    </ul>
+  </details>
+</dialog>
+
+<dialog id="jiraDialog" aria-labelledby="jiraTitle">
+  <header class="jira-header">
+    <div><span class="jira-eyebrow">AVENSETECH / VERIFIED WORK</span><h2 id="jiraTitle">Earn coins with Jira</h2><p id="jiraSite"></p></div>
+    <button id="jiraClose" class="btn" type="button" aria-label="Close Jira rewards">Close</button>
+  </header>
+  <p id="jiraConnection" role="status">Connect Jira to analyze your tickets.</p>
+  <div class="jira-actions">
+    <button id="jiraConnect" class="btn primary" type="button">Connect Jira</button>
+    <button id="jiraDisconnect" class="btn" type="button" disabled>Disconnect</button>
+    <button id="jiraRefresh" class="btn" type="button">Refresh</button>
+    <button id="jiraSetup" class="btn" type="button" hidden>Initialize secure rewards</button>
+  </div>
+  <form id="jiraForm">
+    <label for="jiraLink">Your Jira issue link</label>
+    <input id="jiraLink" type="url" required maxlength="2048" placeholder="https://your-team.atlassian.net/browse/TEAM-123" autocomplete="off">
+    <button id="jiraSubmit" class="btn primary" type="submit" disabled>Analyze ticket</button>
+  </form>
+  <p class="jira-notice">AI assesses task complexity from sanitized ticket summary and description using the configured external AI provider. Jira supplies priority, estimates, worklogs, ownership, and status. Only eligible Done tickets earn coins, once per ticket. Preview amounts are not wallet credits.</p>
+  <p id="jiraError" role="alert"></p>
+  <p id="jiraProgress" role="status" aria-live="polite"></p>
+  <section id="jiraJobs" aria-label="Your ticket analyses and reward history" aria-live="polite"></section>
+</dialog>
+
+<!-- Top right: all employees marked in the office today -->
+<aside class="card" id="ledger" aria-label="Employees in office today">
+  <div class="office-today-head">
+    <div>
+      <h2>In office today <b id="officeTodayN">—</b></h2>
+      <div class="att-sub" id="officeTodayDate">Loading today’s calendar…</div>
+    </div>
+  </div>
+  <ul id="attList" aria-live="polite"></ul>
+</aside>
+
+
+<section class="card" id="person" hidden aria-label="Selected person">
+  <div id="pAvatar"></div>
+  <div id="pBody">
+    <div id="pName">—</div>
+    <div id="pRole">—</div>
+    <div id="pStatus">—</div>
+    <div id="pMeta">—</div>
+    <div id="pAttributes" aria-label="Character attributes"></div>
+  </div>
+  <button class="icon-btn" id="pClose" type="button" aria-label="Close" title="Close (Esc)">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>
+  </button>
+  <div id="pActions">
+    <button class="btn" id="pFollow" type="button">Follow</button>
+    <button class="btn" id="pDuel" type="button" hidden>Challenge to a duel</button>
+  </div>
+</section>
+
+<!-- Top centre: find someone, hide the controls, fullscreen -->
+<div id="topBar">
+  <div id="officeSearch" role="search">
+    <svg class="search-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+    <input type="search" id="officeSearchInput" placeholder="Find an employee…" autocomplete="off" aria-label="Find an employee in the office">
+    <div id="officeMatches" role="listbox" aria-label="Matching employees" hidden></div>
+  </div>
+  <button class="icon-btn" id="uiToggle" type="button" aria-pressed="false" aria-label="Hide controls" title="Hide controls (H)">
+    <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6c.5-.1.9-.1 1.4-.1 6 0 9.5 6.1 9.5 6.1a17 17 0 0 1-2.6 3.3M6.6 6.7A17 17 0 0 0 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.2-1"/></svg>
+  </button>
+  <button class="icon-btn" id="fsToggle" type="button" aria-pressed="false" aria-label="Fullscreen" title="Fullscreen (F)" hidden>
+    <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+  </button>
+</div>
+<!-- Walking as yourself (third or first person): the bar at the top, the touch stick, the crosshair, the prompts -->
+<section class="card" id="fpBar" hidden aria-label="Walking">
+  <div><div class="eyebrow" id="fpMode">Third person</div><div id="fpWho">Walking as you</div></div>
+  <div class="fp-keys" id="fpKeys"></div>
+  <button type="button" class="btn" id="fpExit">Exit</button>
+</section>
+<div id="stick" hidden><div id="knob"></div></div>
+<div id="crosshair" hidden></div>
+<div id="fpPrompt" hidden>
+  <div id="fpLook"></div>
+  <button type="button" class="btn" id="fpAct" hidden></button>
+  <button type="button" class="btn" id="fpDuel" hidden></button>
+</div>
+
+<!-- The arena's big words: the countdown, FIGHT!, the result -->
+<div id="duelBanner" hidden aria-live="polite"></div>
+
+<!-- Top centre: the duel going on (yours first) and challenges -->
+<div id="duelStack">
+  <section class="card" id="duelHud" hidden aria-label="Duel">
+    <div class="duel-tape">
+      <div class="duel-side" id="duelSideA">
+        <span class="duel-name" id="duelNameA"></span>
+        <span class="duel-bar hp"><i id="duelHpA"></i></span>
+        <span class="duel-bar mana"><i id="duelManaA"></i></span>
+        <span class="duel-num" id="duelNumA"></span>
+      </div>
+      <span class="duel-vs">vs</span>
+      <div class="duel-side b" id="duelSideB">
+        <span class="duel-name" id="duelNameB"></span>
+        <span class="duel-bar hp"><i id="duelHpB"></i></span>
+        <span class="duel-bar mana"><i id="duelManaB"></i></span>
+        <span class="duel-num" id="duelNumB"></span>
+      </div>
+    </div>
+    <div id="duelState" role="status" aria-live="polite"></div>
+    <div class="duel-controls" id="duelControls" hidden>
+      <button type="button" class="duel-act" id="duelStrike"><kbd>J</kbd><span id="duelStrikeVerb">Strike</span><i class="duel-cd" id="duelStrikeCd"></i></button>
+      <button type="button" class="duel-act" id="duelGuard"><kbd>K</kbd><span>Guard</span></button>
+      <button type="button" class="duel-act blast" id="duelBlast"><kbd>Q</kbd><span>Blast</span><i class="duel-cd" id="duelBlastCd"></i></button>
+      <button type="button" class="duel-act" id="duelJump"><kbd aria-label="Space">␣</kbd><span>Jump</span></button>
+    </div>
+    <div class="duel-hud-acts">
+      <button type="button" class="btn sm" id="duelWatch" hidden>Watch on the rooftop</button>
+      <button type="button" class="btn sm" id="duelLeave" hidden>Back to the office</button>
+    </div>
+    <p class="duel-hint" id="duelHint"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump · <kbd>J</kbd> strike · <kbd>K</kbd> guard · <kbd>Q</kbd> blast</p>
+  </section>
+  <section class="card" id="duelCard" hidden>
+    <p id="duelMsg" role="status" aria-live="polite" hidden></p>
+    <div id="duelInvite" role="alertdialog" aria-labelledby="duelInviteTitle" hidden>
+      <div id="duelInviteTitle"><strong id="duelInviteFrom"></strong> challenges you to a duel</div>
+      <div class="duel-meta" id="duelInviteMeta"></div>
+      <span class="duel-timer"><i id="duelInviteTime"></i></span>
+      <div class="duel-acts"><button type="button" class="btn" id="duelDecline">Decline</button><button type="button" class="btn primary" id="duelAccept">Accept</button></div>
+    </div>
+    <div id="duelOutgoing" hidden><span id="duelOutgoingText"></span><button type="button" class="btn sm" id="duelCancel">Cancel</button></div>
+  </section>
+</div>
+<div id="veil">Building the floor…</div>
+</div>
+<script type="module" src="/src/entry.js"></script>
+</body>
+</html>

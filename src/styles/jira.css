@@ -1,0 +1,26 @@
+#jiraDialog {
+  width: min(820px, calc(100vw - 32px)); max-height: 86vh; overflow: auto;
+  padding: 28px; border: 1px solid #cdd9d9; border-radius: 0;
+  background: #f8faf9; color: #1d343d; box-shadow: 0 24px 90px #06222a55;
+}
+#jiraDialog::backdrop { background: #092c39a8; }
+.jira-header { display: flex; align-items: start; justify-content: space-between; gap: 18px; }
+.jira-header h2 { margin: 5px 0 14px; font-size: 28px; }
+.jira-eyebrow { font-size: 10px; letter-spacing: .2em; color: #28777c; }
+#jiraSite { overflow-wrap: anywhere; color: #527078; font-size: 12px; }
+.jira-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+#jiraForm { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: 22px 0 8px; }
+#jiraForm label { grid-column: 1 / -1; font-size: 12px; font-weight: 700; }
+#jiraLink { min-width: 0; padding: 12px; border: 1px solid #b7c9ca; border-radius: 0; font: inherit; background: white; color: #17333d; }
+.jira-notice { color: #58727b; font-size: 12px; line-height: 1.6; }
+#jiraError { color: #a72f39; font-size: 13px; }
+#jiraProgress { color: #21727b; font-size: 13px; }
+#jiraJobs { display: grid; gap: 12px; margin-top: 22px; }
+.jira-job { background: white; border: 1px solid #d7e0df; padding: 18px; }
+.jira-job h3 { display: inline-block; margin: 0 12px 8px 0; font-size: 17px; }
+.jira-job p { margin: 7px 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.jira-job blockquote { margin: 9px 0; padding-left: 10px; border-left: 2px solid #87b6b4; font-size: 12px; color: #506d74; }
+.jira-badge { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: #246b70; }
+.jira-amount { display: block; margin: 14px 0 4px; color: #1a7671; font-size: 18px; }
+.jira-reason { color: #88633c; }
+@media (max-width: 560px) { #jiraDialog { padding: 18px; } #jiraForm { grid-template-columns: 1fr; } }

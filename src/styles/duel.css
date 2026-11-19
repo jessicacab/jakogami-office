@@ -1,0 +1,110 @@
+/* Duel (ui/duel.js): the fight HUD and the challenge card at the top centre, the Duel panel (dialog), the walk prompt.
+   Side A takes the accent colour and side B the fight red, like Power Slap's tale of the tape. */
+:root{--duel-a:var(--accent);--duel-b:var(--slap);--duel-mana:#7aa6d8}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--duel-mana:#8fb8e6}}
+:root[data-theme="dark"]{--duel-mana:#8fb8e6}
+
+#duelStack{position:fixed;top:calc(66px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(400px,calc(100vw - 32px));display:flex;flex-direction:column;gap:8px;z-index:3;pointer-events:none}
+body.tp #duelStack,body.fp #duelStack{top:calc(96px + env(safe-area-inset-top,0px))} /* under the walk bar */
+#duelStack .card{position:static;pointer-events:auto;box-sizing:border-box;width:100%}
+#duelHud{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+
+/* the tape: name, health, mana and numbers per side, "vs" between */
+.duel-tape{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px}
+.duel-side{display:grid;gap:5px;min-width:0;transition:opacity .3s ease-out}
+.duel-side.b{text-align:right}
+.duel-side.dim{opacity:.45}
+.duel-name{font:800 16px/1.15 var(--f-display);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duel-bar{display:block;border-radius:3px;background:var(--chip);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.duel-bar.hp{height:8px}
+.duel-bar.mana{height:4px}
+.duel-bar i{display:block;height:100%;transform-origin:left;transition:transform .25s cubic-bezier(.22,1,.36,1)}
+#duelSideA .hp i{background:var(--duel-a)}
+#duelSideB .hp i{background:var(--duel-b);transform-origin:right}
+.duel-bar.mana i{background:var(--duel-mana)}
+#duelSideB .mana i{transform-origin:right}
+.duel-num{font:500 11px/1 var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:.04em;color:var(--muted)}
+.duel-vs{font:800 11px/1 var(--f-display);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+/* guarding: a shield line under the name; winding up: the name flashes (the warning to guard) */
+.duel-side.guarding .duel-name{text-decoration:underline 3px color-mix(in srgb,var(--ink) 45%,transparent);text-underline-offset:4px}
+.duel-side.winding .duel-name{animation:duel-warn .2s steps(2) infinite}
+@keyframes duel-warn{50%{color:var(--duel-b)}}
+@media (prefers-reduced-motion:reduce){.duel-side.winding .duel-name{animation:none;color:var(--duel-b)}}
+#duelState{font:600 15px/1.2 var(--f-mono);font-variant-numeric:tabular-nums;text-align:center;color:var(--ink)}
+#duelState.big{font:800 18px/1.2 var(--f-display);letter-spacing:.02em}
+#duelWatch{align-self:center}
+
+/* your controls: a cooldown sweeps back across each button */
+.duel-controls{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.duel-act{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--chip);color:var(--ink);font:700 13px/1 var(--f-body);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.duel-act:hover{border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+.duel-act:disabled{opacity:.5;cursor:not-allowed}
+.duel-act.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.duel-act.blast{border-color:color-mix(in srgb,var(--duel-mana) 55%,var(--line))}
+.duel-act span,.duel-act kbd{position:relative;z-index:1}
+.duel-cd{position:absolute;inset:0;background:color-mix(in srgb,var(--ink) 16%,transparent);transform:scaleX(0);transform-origin:left;pointer-events:none}
+@media (pointer:coarse){.duel-act kbd{display:none}.duel-act{min-height:52px;font-size:15px}}
+
+/* the challenge card */
+#duelCard{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+#duelMsg{margin:0;font:600 13px/1.4 var(--f-body)}
+#duelInvite{display:flex;flex-direction:column;gap:8px}
+#duelInviteTitle{font:500 14px/1.35 var(--f-body)}
+#duelInviteTitle strong{font:800 15px/1.2 var(--f-display)}
+.duel-meta{font:500 11px/1.4 var(--f-mono);letter-spacing:.03em;color:var(--muted)}
+.duel-timer{display:block;height:3px;border-radius:2px;background:var(--chip);overflow:hidden}
+.duel-timer i{display:block;height:100%;background:var(--duel-b);transform-origin:left}
+.duel-acts{display:flex;gap:8px;justify-content:flex-end}
+#duelOutgoing{display:flex;align-items:center;justify-content:space-between;gap:10px;font:500 13px/1.35 var(--f-body)}
+
+/* the walk prompt: G challenges who you look at */
+#fpDuel{background:var(--panel);border-color:color-mix(in srgb,var(--slap) 40%,var(--line));color:var(--slap)}
+#fpDuel kbd{background:var(--slap);border-color:transparent;color:var(--slap-ink)}
+
+/* the dock: a dot when a challenge is waiting for you */
+#duelBtn{position:relative}
+.dock-badge{position:absolute;top:2px;right:2px;min-width:14px;height:14px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:var(--slap);color:var(--slap-ink);font:800 9px/14px var(--f-display);text-align:center}
+
+/* the Duel panel */
+#duelDialog,#duelDialog *{box-sizing:border-box}
+#duelDialog{padding:0;width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 48px);border:1px solid var(--line);border-radius:var(--radius-xs);background:var(--bg);color:var(--ink);box-shadow:0 30px 100px rgba(0,0,0,.3);font-family:var(--f-body);overflow:auto}
+#duelDialog::backdrop{background:rgba(9,22,30,.65);backdrop-filter:blur(5px)}
+#duelDialog .btn,#duelDialog .icon-btn{border-radius:var(--radius-xs)}
+.duel-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 20px 14px;border-bottom:1px solid var(--line)}
+.duel-eyebrow{font:500 10px/1.2 var(--f-mono);letter-spacing:.16em;color:var(--muted)}
+.duel-header h2{margin:4px 0 0;font:800 26px/1.1 var(--f-display)}
+.duel-me{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 20px 0;padding:12px 14px;border:1px solid var(--line);background:var(--panel)}
+.duel-who{display:flex;flex-direction:column;gap:3px;min-width:0}
+.duel-who strong{font:700 14px/1.3 var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duel-switch{display:inline-flex;align-items:center;gap:8px;font:600 13px/1 var(--f-body);cursor:pointer}
+.duel-switch input{width:18px;height:18px;accent-color:var(--accent);margin:0}
+.duel-note{margin:12px 20px 0;font-size:13px;color:var(--muted)}
+#duelSetup{color:var(--slap)}
+.duel-h{margin:18px 20px 8px;font:500 10.5px/1.2 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.duel-list{list-style:none;margin:0 20px;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.duel-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.duel-row .btn{flex:none}
+.duel-empty{margin:10px 20px 0;font-size:13px;color:var(--muted)}
+.duel-how{margin:18px 20px 20px;font-size:13px;line-height:1.5}
+.duel-how summary{cursor:pointer;font-weight:700}
+.duel-how ul{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+
+@media (max-width:760px){
+  #duelStack{top:calc(76px + env(safe-area-inset-top,0px))}
+  body.tp #duelStack,body.fp #duelStack{top:calc(84px + env(safe-area-inset-top,0px))}
+  .duel-header{padding:16px}
+  .duel-me,.duel-list,.duel-h,.duel-note,.duel-empty,.duel-how{margin-left:16px;margin-right:16px}
+}
+
+/* In the arena (ui/duelArena.js): the office's panels are put away; the fight HUD stays, under the countdown banner. */
+body.arena #hud,body.arena #ledger,body.arena #person,body.arena #topBar,body.arena #dock,body.arena #fpBar,body.arena #fpPrompt,body.arena #crosshair{display:none}
+body.arena #duelStack{top:calc(16px + env(safe-area-inset-top,0px))}
+body.arena #stage canvas{cursor:default}
+.duel-hud-acts{display:flex;justify-content:center;gap:6px}
+.duel-hud-acts:not(:has(button:not([hidden]))){display:none}
+.duel-hint{margin:0;text-align:center;font:500 11px/1.6 var(--f-body);color:var(--muted)}
+.duel-hint kbd{height:18px;min-width:18px;font-size:10px}
+body:not(.arena) .duel-hint,#duelControls[hidden]+.duel-hud-acts+.duel-hint{display:none}
+@media (pointer:coarse){.duel-hint{display:none}}
+#duelBanner{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;font:800 clamp(56px,12vw,120px)/1 var(--f-display);letter-spacing:.02em;color:#fff;text-transform:uppercase;text-shadow:0 4px 0 rgba(120,40,20,.6),0 0 40px rgba(255,150,80,.55);white-space:nowrap}
+#duelBanner.small{font-size:clamp(30px,6vw,56px)}

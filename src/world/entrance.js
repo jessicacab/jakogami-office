@@ -1,0 +1,11 @@
+import { W } from '../config/plan.js';
+import { N, mkSpot } from './furniture/basics.js';
+
+let EXIT, ENTRY;
+
+function buildEntrance() {
+  EXIT = mkSpot('exit', 1270, 230, N, { shared: false, place: 'the exit' });
+  ENTRY = W(1270, 230);
+}
+
+export { ENTRY, EXIT, buildEntrance };

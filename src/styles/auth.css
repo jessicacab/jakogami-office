@@ -1,0 +1,95 @@
+/* Sign-in: "Rooftop arcade" (the duel arena's rooftop at dusk, with an arcade title screen on top). One look, always
+   dark, whatever the office theme: the sky, the skyline and the helipad are decoration; the card is the only control. */
+[hidden]{display:none!important}
+#authGate,#authGate *{box-sizing:border-box}
+#authGate{
+  --g-cream:#fff1dc; --g-gold:#f7c948; --g-ember:#ff8a4c; --g-teal:#2fb5a0; --g-night:#1b1426; --g-panel:#221a33;
+  --g-field:#17112a; --g-edge:#6b5a7e; --g-soft:#e9cfc2; --g-dim:#c9aebb; --g-warm:#ffd2b0; --g-error:#ff9b85;
+  --g-pixel:"Silkscreen","Courier New",monospace; --g-head:"Unbounded","Archivo","Arial Black",sans-serif; --g-body:"Rubik",var(--f-body);
+  position:fixed;inset:0;z-index:1000;overflow:auto;color:var(--g-cream);font-family:var(--g-body);color-scheme:dark;
+  background:linear-gradient(180deg,#17142e 0%,#3a2a5e 34%,#8a4a78 52%,#ff8a4c 66%,#ffb067 71%,#4a2f45 72%,#1b1426 100%) fixed;
+}
+
+/* ---- the scene (fixed behind the content) ---- */
+.gate-sky{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.gate-sky::before{content:'';position:absolute;inset:0 0 30% 0;background-image:linear-gradient(rgba(255,241,220,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,241,220,.05) 1px,transparent 1px);background-size:32px 32px}
+.gate-sun{position:absolute;left:38%;top:52%;width:min(18vw,220px);aspect-ratio:1;border-radius:50%;transform:translateY(-50%);background:radial-gradient(circle,#fff1c9 0%,#ffb067 40%,rgba(255,138,76,0) 70%)}
+.gate-city{position:absolute;left:0;right:0;bottom:0;height:42%}
+.gate-city i{position:absolute;bottom:0;display:block;background-color:#120f1f;background-image:radial-gradient(#f2b867 3px,transparent 3.6px);background-size:16px 22px;background-position:5px 9px}
+.gate-pad{position:absolute;left:-8%;width:76%;bottom:-17vh;height:34vh;border-radius:50%;background:#241c2c;box-shadow:inset 0 0 0 5px var(--g-gold)}
+.gate-crew{position:absolute;left:6%;bottom:max(64px,8vh);display:flex;gap:clamp(14px,2vw,28px);align-items:flex-end}
+.gate-guy{--u:clamp(7px,.85vw,12px);--legs:linear-gradient(var(--g-night),var(--g-night)) left 14% bottom 0/34% 22% no-repeat,linear-gradient(var(--g-night),var(--g-night)) right 14% bottom 0/34% 22% no-repeat;
+  position:relative;width:calc(var(--u)*5.4);height:calc(var(--u)*12.2);background:var(--legs)}
+.gate-guy::before{content:'';position:absolute;left:50%;top:0;width:calc(var(--u)*4.2);height:calc(var(--u)*4.2);transform:translateX(-50%);background:var(--skin);border:3px solid var(--g-night)}
+.gate-guy::after{content:'';position:absolute;left:0;right:0;top:calc(var(--u)*4.6);height:calc(var(--u)*4.9);background:var(--shirt);border:3px solid var(--g-night)}
+/* one of them holds a katana */
+.gate-sword{position:absolute;z-index:1;right:calc(var(--u)*-2.6);top:calc(var(--u)*-.6);width:calc(var(--u)*1);height:calc(var(--u)*9);background:linear-gradient(#e7eef4 0 72%,#e0524a 72% 78%,var(--g-night) 78%);border:2px solid var(--g-night);transform:rotate(24deg);transform-origin:50% 100%}
+
+/* ---- the content ---- */
+.gate{position:relative;min-height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:24px;max-width:1240px;margin:0 auto;
+  padding-block:max(20px,env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-bottom,0px));
+  padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+.gate-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font:700 13px/1 var(--g-pixel);letter-spacing:.04em}
+.gate-coins{display:inline-flex;align-items:center;gap:9px;padding:8px 13px;background:var(--g-panel);border:3px solid var(--g-cream);box-shadow:4px 4px 0 var(--g-ember)}
+.gate-coin{width:18px;height:18px;border-radius:50%;background:var(--g-gold);border:2px solid var(--g-night);flex:none}
+.gate-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,400px);gap:clamp(24px,5vw,72px);align-items:center}
+.gate-story{display:grid;gap:18px;align-content:center;min-width:0;container-type:inline-size}
+.gate-eyebrow{font:500 12px/1.2 var(--f-mono);letter-spacing:.3em;text-transform:uppercase;color:var(--g-warm)}
+.gate-mark{margin:0;font:700 clamp(34px,11cqi,104px)/.95 var(--g-pixel);letter-spacing:.01em;white-space:nowrap;color:var(--g-cream);text-shadow:5px 5px 0 var(--g-ember),10px 10px 0 var(--g-night)} /* sized to its column: always one line */
+.gate-tag{margin:6px 0 0;font:700 clamp(24px,2.8vw,36px)/1.1 var(--g-head);letter-spacing:-.01em;color:#fff;text-wrap:balance}
+.gate-sub{margin:0;max-width:46ch;font:400 clamp(15px,1.25vw,17px)/1.55 var(--g-body);color:#ffe3cf}
+
+/* the menu box */
+.gate-card{background:var(--g-panel);border:4px solid var(--g-cream);box-shadow:10px 10px 0 var(--g-ember);padding:clamp(22px,2.6vw,32px);display:grid;gap:16px;min-width:0}
+.gate-card h1{margin:0;font:700 24px/1 var(--g-pixel);color:var(--g-gold);letter-spacing:.02em;text-transform:uppercase}
+.gate-intro{margin:0;font-size:14px;line-height:1.5;color:var(--g-soft)}
+#authStatus{margin:0;font-size:13px;line-height:1.5;color:var(--g-warm)}
+#authStatus:empty{display:none}
+#loginForm{display:grid;gap:16px}
+.login-field{display:grid;gap:8px}
+#loginForm label{font:700 12px/1 var(--g-pixel);letter-spacing:.06em;text-transform:uppercase;color:var(--g-warm)}
+#loginForm input{width:100%;min-width:0;height:48px;border:3px solid var(--g-edge);border-radius:0;padding:10px 12px;background:var(--g-field);color:var(--g-cream);font:400 15px var(--g-body);transition:border-color .15s}
+#loginForm input::placeholder{color:#a493b4;opacity:1}
+#loginForm input:hover{border-color:#8d7aa3}
+#loginForm input:focus-visible{outline:3px solid var(--g-gold);outline-offset:2px;border-color:var(--g-gold)}
+#authGate button:focus-visible{outline:3px solid var(--g-gold);outline-offset:3px}
+#signOut:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.password-field{position:relative;display:flex;align-items:center}
+#loginForm .password-field input{padding-right:64px}
+#passwordToggle{position:absolute;right:6px;border:0;padding:8px;background:transparent;color:var(--g-dim);font:700 11px var(--g-pixel);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+#passwordToggle:hover{color:var(--g-cream)}
+#loginError{margin:0;color:var(--g-error);font-size:13px;line-height:1.5}
+#loginError:empty{display:none}
+/* PRESS START, with the arcade prompt blinking after it (drawn here, so the sign-in code can set the text freely) */
+#loginSubmit{height:54px;margin-top:4px;border:3px solid var(--g-night);border-radius:0;background:var(--g-gold);color:var(--g-night);box-shadow:5px 5px 0 var(--g-cream);font:700 18px/1 var(--g-pixel);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:transform .08s,box-shadow .08s}
+#loginSubmit::after{content:' ▶';animation:gate-blink 1.1s steps(2,start) infinite}
+#loginSubmit:hover{filter:brightness(1.05)}
+#loginSubmit:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--g-cream)}
+#loginSubmit:disabled{opacity:.75;cursor:wait}
+#loginSubmit:disabled::after{content:none}
+@keyframes gate-blink{to{visibility:hidden}}
+#retryLogout{border:3px solid var(--g-cream);border-radius:0;padding:10px;background:transparent;color:var(--g-cream);font:700 12px var(--g-pixel);text-transform:uppercase;cursor:pointer}
+.gate-fine{margin:0;font-size:12px;line-height:1.5;color:var(--g-dim)}
+
+/* the bar along the bottom */
+.gate-xp{display:grid;gap:8px;justify-self:end;width:min(420px,100%);padding:10px 12px;background:rgba(27,20,38,.82);border:3px solid var(--g-night);font:700 11px/1 var(--g-pixel);letter-spacing:.06em;text-transform:uppercase;color:var(--g-cream)}
+.gate-xp-bar{display:block;height:16px;border:3px solid var(--g-cream);background:var(--g-night)}
+.gate-xp-bar i{display:block;height:100%;width:62%;background:repeating-linear-gradient(90deg,var(--g-teal) 0 14px,#27a08e 14px 28px)}
+
+/* ---- tablets and phones: one column, the card under the title, the crew on the helipad below ---- */
+@media (max-width:860px){
+  .gate-main{grid-template-columns:minmax(0,1fr);align-items:start}
+  .gate-card{max-width:460px;width:100%}
+  .gate-sun{left:55%;top:58%}
+  .gate-pad{width:130%;left:-15%}
+  .gate-xp{justify-self:stretch;width:auto}
+  .gate-crew{display:none} /* the card covers the helipad here */
+  .gate{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+}
+@media (max-width:520px){
+  .gate-bar{font-size:11px}
+  .gate-mark{text-shadow:4px 4px 0 var(--g-ember),8px 8px 0 var(--g-night)}
+  .gate-card{box-shadow:7px 7px 0 var(--g-ember)}
+  #loginForm input{font-size:16px} /* no zoom-in on focus on phones */
+}
+@media (prefers-reduced-motion:reduce){#loginSubmit::after{animation:none}#loginSubmit,#loginForm input{transition:none}}
