@@ -2,6 +2,7 @@ import express from 'express';
 import { makeAuth } from './auth.js';
 import { attachDuel } from './duel.js';
 import { attendanceRoutes } from './routes/attendance.js';
+import { characterRoutes } from './routes/characters.js';
 import { duelRoutes } from './routes/duel.js';
 import { employeeRoutes } from './routes/employees.js';
 import { marketplaceRoutes } from './routes/marketplace.js';
@@ -47,6 +48,8 @@ function makeApi(env, dependencies = {}) {
   api.use(attendanceRoutes(db));
   api.use(marketplaceRoutes(sessionClient));
   api.use(duelRoutes(sessionClient));
+  // a saved look is shown to everyone online at once, over the realtime connection
+  api.use(characterRoutes(db, (userId, spec) => realtime?.io.emit('look:changed', { userId, spec })));
   api.use(makeJiraRoutes({ config, store, jira, sessionClient, lock }));
 
   api.use((req, res) => res.status(404).json({ error: 'Not found' }));

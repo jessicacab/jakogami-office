@@ -48,6 +48,10 @@ Purchases and equipment changes serialize on the account wallet row. Database pr
 
 The welcome balance is not a daily allowance. There are no real-money purchases, refills, or trading. Jira rewards are optional and are described below.
 
+## Character looks setup
+
+Run `supabase/migrations/202611200001_character_looks.sql` once in the same Supabase project (SQL Editor or `psql`). It adds `office_character_looks`, which only the server can read or write. Until it is applied, **My character** opens but saving shows a setup message, and everyone keeps their generated look.
+
 ## Duel setup
 
 1. In the **same Supabase project**, after the Marketplace migrations, run `supabase/migrations/202611180001_duel.sql` in **SQL Editor** (copy the whole file). It is additive and rerunnable.

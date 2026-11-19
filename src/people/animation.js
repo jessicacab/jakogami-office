@@ -14,6 +14,7 @@ const HOLDING = new Set(['walk', 'stand']); // poses in which a carried pack ite
 function animKey(p) {
   if (p.state === 'player') return player.sitting ? (p.task?.anim || 'listenSit') : (player.moving ? 'walk' : p.task?.anim || 'stand'); // (standing: a game's pose, ui/games.js)
   if (p.state === 'walking') return p.riding ? 'ride' : p.task?.run || p.hazel ? 'run' : 'walk'; // Hazel runs, or rides her tricycle
+  if (p.state === 'remote') return p.task?.anim || 'stand'; // walking in another browser (people/remote.js)
   if (p.state !== 'doing' || !p.task) return 'stand';
   const t = p.task;
   if (t.kind === 'meeting') return t.meeting?.teacher === p ? 'present' : t.meeting && t.meeting.speaker === p ? 'talkSit' : 'listen'; // a class's teacher stands

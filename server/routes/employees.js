@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { assignedDesk } from '../../src/config/desks.js';
+import { savedLooks } from './characters.js';
 
 // The internal tool's profile rows use `id` as the user id and `full_name` for the display name.
 const splitName = name => {
@@ -14,10 +15,11 @@ function employeeRoutes(db) {
     const { data: rows, error } = await db.from('profiles')
       .select('id, full_name, role').eq('role', 'employee').order('full_name');
     if (error) throw error;
+    const looks = await savedLooks(db); // each person's saved character, if they made one
     res.json(rows.map(e => ({
       userId: e.id, ...splitName(e.full_name),
       photo: null, department: null, intern: false, shift: null,
-      character: null,
+      character: looks.get(e.id) ?? null,
       desk: assignedDesk(e.full_name),
     })));
   });

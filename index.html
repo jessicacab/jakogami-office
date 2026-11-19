@@ -99,6 +99,9 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l2-5h14l2 5M4 10v10h16V10M9 20v-6h6v6M3 9h18"/></svg><span>Marketplace</span>
     </button>
   </div>
+  <button type="button" class="dock-btn" id="openCreator" title="Change how your character looks">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span>My character</span>
+  </button>
   <button type="button" class="dock-btn" id="walkBtn" title="Walk around the office as yourself">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4.5" r="2"/><path d="M10 21l2-6 3 3v3M9 12l2-4 4 1 2 3M11 8l-1 5 2 2"/></svg><span>Walk</span>
   </button>
@@ -290,6 +293,9 @@
       <h2>In office today <b id="officeTodayN">—</b></h2>
       <div class="att-sub" id="officeTodayDate">Loading today’s calendar…</div>
     </div>
+    <button type="button" class="icon-btn" id="attToggle" aria-controls="attList" aria-expanded="true" aria-label="Hide the list" title="Hide the list">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+    </button>
   </div>
   <ul id="attList" aria-live="polite"></ul>
 </aside>
@@ -342,6 +348,28 @@
   <button type="button" class="btn" id="fpAct" hidden></button>
   <button type="button" class="btn" id="fpDuel" hidden></button>
 </div>
+
+<!-- My character: change your own look (ui/creator.js). Preview on the left, choices on the right. -->
+<section id="creator" hidden role="dialog" aria-modal="true" aria-labelledby="creatorTitle">
+  <div id="creatorStage">
+    <div class="cl-top">
+      <button id="creatorBack" class="btn" type="button">← Back to the office</button>
+      <div class="eyebrow">My character</div>
+      <h2 id="creatorTitle">Your character</h2>
+      <div id="creatorWho"></div>
+    </div>
+    <div class="cl-hint">Drag to turn · scroll to zoom</div>
+    <div class="cl-bar"><div id="creatorClips" class="seg" role="group" aria-label="Animations"></div><button id="creatorSpin" class="btn sm" type="button" aria-pressed="false">Spin</button></div>
+  </div>
+  <aside id="creatorSide" aria-label="Choices">
+    <div id="creatorPanel"></div>
+    <div class="cl-footer">
+      <p id="creatorStatus" role="status" aria-live="polite"></p>
+      <button id="creatorCancel" class="btn" type="button">Cancel</button>
+      <button id="creatorSave" class="btn primary" type="button">Save my character</button>
+    </div>
+  </aside>
+</section>
 
 <!-- The arena's big words: the countdown, FIGHT!, the result -->
 <div id="duelBanner" hidden aria-live="polite"></div>

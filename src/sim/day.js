@@ -23,8 +23,8 @@ function newDay() {
   if (usesAttendance()) for (const p of people) if (!held(p) && sim.t >= p.arriveAt && sim.t < p.leaveAt) seatNow(p);
   addLog(`Day ${sim.day} begins`);
 }
-// Someone the user is walking as, or who is in a duel, is left where they are (Live re-reads attendance every minute).
-const held = p => !!p.controlled || inDuel(p);
+// Someone the user is walking as, someone walking in another browser, or someone in a duel, is left where they are (Live re-reads attendance every minute).
+const held = p => !!p.controlled || p.state === 'remote' || inDuel(p);
 // Everyone out, today's times recomputed.
 function clearDay() {
   meetings.length = 0;

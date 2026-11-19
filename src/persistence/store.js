@@ -35,4 +35,17 @@ async function fetchAttendanceSummary() {
     return res.ok ? await res.json() : null;
   } catch (_) { return null; }
 }
-export { fetchAttendance, fetchAttendanceSummary, fetchEmployees, loadLocalSpec, saveLocalSpec };
+// Save your own character's look (server/routes/characters.js): { spec } as stored, or { error, setup }.
+async function saveMyCharacter(spec) {
+  try {
+    const res = await fetch('/api/characters/me', {
+      method: 'PUT', credentials: 'same-origin', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ spec }), signal: AbortSignal.timeout(10000),
+    });
+    if (res.status === 401 || res.status === 403) window.dispatchEvent(new Event('office-auth-lost'));
+    const body = await res.json().catch(() => ({}));
+    return res.ok ? { spec: body.spec } : { error: body.error || 'Your character could not be saved right now.', setup: body.code === 'setup_required' };
+  } catch (_) { return { error: 'Your character could not be saved. Check your connection and try again.' }; }
+}
+
+export { fetchAttendance, fetchAttendanceSummary, fetchEmployees, loadLocalSpec, saveLocalSpec, saveMyCharacter };

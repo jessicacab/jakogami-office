@@ -2,23 +2,25 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Character } from '../character/pack/characters.js';
 import { CHARACTER_SIZES, fitHead } from '../character/rig.js';
-import { DESK_ISLANDS, deskSeat, deskSeats } from '../config/desks.js';
 import { seededRandom } from '../core/util.js';
 import { TYPES, normalizeSpec, presetList, randomSpec, specOptions } from '../character/spec.js';
-import { moveToDesk, restylePerson, seatById } from '../people/factory.js';
+import { restylePerson } from '../people/factory.js';
 import { HAZEL_LOCKED, HAZEL_NAME } from '../people/hazel.js';
-import { employeeById, fullName, jobTitle, roster, simRole } from '../people/roster.js';
-import { fillAvatar } from './avatar.js';
-import { player, savePlayerSpec, setPlayerSpec } from '../player/player.js';
+import { restyleRemote } from '../people/remote.js';
+import { employeeById, fullName, jobTitle, simRole } from '../people/roster.js';
+import { onDuel } from '../persistence/duel.js';
+import { saveMyCharacter } from '../persistence/store.js';
+import { player, setPlayerSpec } from '../player/player.js';
 import { addLog, people } from '../sim/state.js';
 import { $ } from './dom.js';
 
-/* ================= Character lab ================= */
-// Edit an employee's character: click someone in the office and press "Edit character", or search for them
-// here. Edits apply to this browser session, restyling the employee and moving them to the selected desk.
-// Without a staff list (API unavailable) it edits the player's own look.
-// The preview has its own small renderer, made the first time the lab opens.
-const creator = { open: false, draft: null, view: null, keepStyle: false, spin: false, stage: null, target: null, desk: null, deskIsland: null, folds: new Set(['employee', 'desk']) };
+/* ================= My character ================= */
+// Change your own look (dock → My character): style, body (male or female), build, height, skin tone, eyes and face
+// details, hair and facial hair, clothes (tops, dresses, trousers, shoes, colours) and accessories, on a turning
+// preview. Save stores it on the server (server/routes/characters.js: your own account only, checked against these
+// same options), and everyone online sees the new look at once ('look:changed' on the realtime connection).
+// You can change only your own character. The preview has its own small renderer, made the first time it opens.
+const creator = { open: false, draft: null, view: null, keepStyle: false, spin: false, stage: null, me: null, saving: false, folds: new Set(['body', 'hair']) };
 const STYLE_LABEL = { chibi: 'Chibi', blocky: 'Blocky' };
 const SLOT_LABELS = { head: 'Head', face: 'Face', body: 'Body', back: 'Back', hand: 'Hands' };
 
@@ -64,45 +66,56 @@ function loop() {
 }
 
 // ----- open / close -----
-// Open the lab, editing the employee with this user id (or nobody yet: search for them).
-function openCreator(userId = null) {
-  if (creator.open) return;
+const isHazel = userId => fullName(employeeById(userId) ?? { firstName: '', lastName: '' }).toLowerCase() === HAZEL_NAME.toLowerCase();
+function openCreator() {
+  if (creator.open || !creator.me) return;
+  if (isHazel(creator.me)) { addLog(HAZEL_LOCKED); return; } // her look is fixed
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
   creator.open = true; $('creator').hidden = false;
-  creator.target = employeeById(userId) ? userId : null;
-  creator.draft = roster.list ? lookOf(creator.target) : clone(player.spec);
-  creator.desk = deskOf(creator.target); creator.deskIsland = null;
+  creator.draft = lookOf(creator.me);
+  status('');
   if (!creator.stage) creator.stage = makeStage();
   creator.stage.resize(); creator.stage.clock.getDelta();
   rebuild();
   loop();
-  (creator.target || !roster.list ? $('creatorSave') : $('creatorSearch')).focus();
+  $('creatorSave').focus();
 }
-function closeCreator(save) {
-  if (!creator.open) return;
-  if (save) {
-    const e = employeeById(creator.target);
-    if (e) saveEmployee(e, normalizeSpec(creator.draft), creator.desk);
-    else if (!roster.list) { setPlayerSpec(creator.draft); savePlayerSpec(); addLog('You changed your look'); }
-  }
+function closeCreator() {
+  if (!creator.open || creator.saving) return;
   creator.open = false; $('creator').hidden = true;
   cancelAnimationFrame(creator.stage.raf);
 }
+function status(text, error = false) { const n = $('creatorStatus'); n.textContent = text; n.classList.toggle('error', error); }
 
-// The look an employee has now: as drawn in the office, else saved, else the generated one they'd get.
+// Save: the server cleans and stores it, then it is shown here (and everyone else hears about it).
+async function saveMine() {
+  if (creator.saving) return;
+  creator.saving = true; $('creatorSave').disabled = true; $('creatorSave').textContent = 'Saving…'; status('');
+  const res = await saveMyCharacter(normalizeSpec(creator.draft));
+  creator.saving = false; $('creatorSave').disabled = false; $('creatorSave').textContent = 'Save my character';
+  if (res.error) { status(res.setup ? 'Saving characters needs setup: an administrator runs the character looks migration.' : res.error, true); return; }
+  applyLook(creator.me, res.spec);
+  addLog('You changed your look');
+  closeCreator();
+}
+
+// Your look now: as drawn in the office, else saved, else the generated one you have (your own character if you have
+// no employee record).
 function lookOf(userId) {
-  const e = employeeById(userId); if (!e) return clone(player.spec);
+  const e = employeeById(userId);
+  if (!e) return clone(player.spec);
   const p = people.find(q => q.userId === userId);
   return clone(p?.spec ?? e.character ?? randomSpec(simRole(e.department), seededRandom(e.userId)));
 }
-// The desk an employee chose, else the one they sit at now (null: not in the office, no choice yet).
-function deskOf(userId) { return employeeById(userId)?.desk ?? people.find(q => q.userId === userId)?.seat.deskId ?? null; }
-// Apply an employee's look and desk for the current browser session.
-function saveEmployee(e, spec, desk) {
-  e.character = spec; e.desk = desk;
-  const p = people.find(q => q.userId === e.userId);
-  if (p) { restylePerson(p, p.name === HAZEL_NAME ? normalizeSpec({ ...spec, angry: true }) : spec); if (desk) moveToDesk(p, seatById(desk)); }
-  addLog(`Updated ${e.firstName}'s character${desk ? ` (${seatById(desk)?.label ?? desk})` : ''} for this session`);
+// Show someone's new look everywhere it appears in this browser: their employee in the office (gear kept), a character
+// walking in from another browser, and, if it is you, your own walking character.
+function applyLook(userId, raw) {
+  const spec = normalizeSpec(raw), e = employeeById(userId);
+  if (e) e.character = spec;
+  const p = people.find(q => q.userId === userId);
+  if (p) restylePerson(p, p.name === HAZEL_NAME ? normalizeSpec({ ...spec, angry: true }) : spec);
+  restyleRemote(userId, spec);
+  if (userId === creator.me) setPlayerSpec(spec);
 }
 
 // ----- editing -----
@@ -110,11 +123,9 @@ function rebuild(refreshPanel = true) {
   const hero = creator.stage.hero;
   hero.set(creator.draft, true); fitHead(hero);
   creator.view = hero.resolved;
-  const e = employeeById(creator.target);
-  $('creatorTitle').textContent = e ? fullName(e) : roster.list ? 'Edit a character' : 'Your character';
-  $('creatorWho').textContent = e ? `${jobTitle(e)} · ${STYLE_LABEL[creator.draft.type]}` : roster.list ? 'Search for an employee to start' : STYLE_LABEL[creator.draft.type];
-  $('creatorSave').disabled = !!roster.list && !e;
-  $('creatorSave').textContent = e ? `Save ${e.firstName}'s character` : 'Save';
+  const e = employeeById(creator.me);
+  $('creatorTitle').textContent = e ? fullName(e) : 'Your character';
+  $('creatorWho').textContent = `${e ? jobTitle(e) + ' · ' : ''}${STYLE_LABEL[creator.draft.type]}`;
   renderClips();
   if (refreshPanel) renderPanel(); else updateJson();
 }
@@ -131,89 +142,6 @@ function load(spec) {
 }
 // Colour inputs fire continuously; redraw the character live and the panel only when the pick is final.
 const live = fn => (value, isLive) => { fn(value); edited(); rebuild(!isLive); };
-
-// "Employee": who is being edited, or a search to find them.
-const MAX_MATCHES = 8;
-function employeePicker() {
-  const e = employeeById(creator.target);
-  if (e) return fold('employee', 'Employee', fullName(e),
-    el('div', { class: 'cl-me' },
-      avatarOf(e),
-      el('div', { class: 'cl-me-who' }, el('div', { class: 'cl-me-name' }, fullName(e)), el('div', { class: 'cl-note' }, jobTitle(e))),
-      el('button', { type: 'button', class: 'btn sm', on: { click: () => { creator.target = null; rebuild(); $('creatorSearch').focus(); } } }, 'Change')));
-  const results = el('div', { class: 'cl-matches', id: 'creatorMatches', role: 'listbox', 'aria-label': 'Matching employees' });
-  const search = el('input', { type: 'search', id: 'creatorSearch', placeholder: 'Search an employee…', autocomplete: 'off', 'aria-label': 'Search an employee',
-    on: { input: ev => showMatches(results, ev.target.value), keydown: ev => { if (ev.key === 'Enter') results.querySelector('button')?.click(); } } });
-  return fold('employee', 'Employee', 'Pick an employee', search, results, el('div', { class: 'cl-note' }, 'Find the employee whose character you want to edit, or click them in the office.'));
-}
-// "Desk": where this employee sits. First pick a desk group (A-H, the HR office), then a seat in it, shown
-// like cinema seats: the chairs on each side of the desk in their real order. Seats other employees chose
-// can't be picked; department desks (the HR office) only by that department. Picking a seat someone sits
-// at without having chosen it swaps them.
-function seatState(e, s) {
-  if (s.id === creator.desk) return 'mine';
-  if (roster.list.some(o => o.desk === s.id && o.userId !== e.userId)) return 'taken';
-  if (s.island.department && s.island.department !== e.department) return 'taken';
-  const sitter = seatById(s.id)?.owner;
-  return sitter && sitter.userId !== e.userId ? 'used' : 'free';
-}
-function deskPicker(e) {
-  const seats = deskSeats(), cur = deskSeat(creator.desk);
-  const islands = DESK_ISLANDS.filter(isl => !isl.department || isl.department === e.department || cur?.island === isl);
-  const shown = islands.find(i => i.id === creator.deskIsland) ?? cur?.island ?? islands[0];
-  creator.deskIsland = shown.id;
-  const open = isl => seats.filter(s => s.island === isl && seatState(e, s) !== 'taken').length; // pickable: free, or a swap
-  const groups = el('div', { class: 'cl-islands', role: 'tablist', 'aria-label': 'Desk group' }, islands.map(isl => el('button', {
-    type: 'button', class: 'cl-isl', role: 'tab', 'aria-selected': String(isl === shown), title: isl.name,
-    on: { click: () => { creator.deskIsland = isl.id; renderPanel(); } } }, el('b', {}, isl.department ? 'HR' : isl.id), el('span', {}, `${open(isl)} open`))));
-  const row = side => el('div', { class: 'cl-seatrow' }, seats.filter(s => s.island === shown && s.py < shown.rect[1] === (side === 'top')).map(s =>
-    el('button', { type: 'button', class: 'cl-seat', 'data-desk': s.id, role: 'radio', on: { click: () => pickDesk(e, s.id) } }, String(s.number))));
-  const map = el('div', { class: 'cl-seatmap', id: 'creatorSeatMap', role: 'radiogroup', 'aria-label': shown.name },
-    shown.sides.includes('top') ? row('top') : null, el('div', { class: 'cl-deskbar' }, shown.name), shown.sides.includes('bottom') ? row('bottom') : null);
-  const legend = el('div', { class: 'cl-legend' }, [['mine', 'Selected'], ['free', 'Free'], ['used', 'Someone sits here (swaps)'], ['taken', 'Taken']].map(([c, t]) => el('span', {}, el('i', { class: 'cl-dot ' + c }), t)));
-  const any = el('button', { type: 'button', class: 'btn sm', id: 'creatorAnyDesk', on: { click: () => pickDesk(e, null) } }, 'Any free desk');
-  queueMicrotask(() => paintSeats(e));
-  return fold('desk', 'Desk', el('span', { id: 'creatorDeskSum' }, cur ? cur.label : 'Any free desk'), groups, map, el('div', { class: 'cl-deskfoot' }, legend, any));
-}
-// Colour this group's seats for the employee and show the choice; called again after each pick.
-function paintSeats(e) {
-  const map = $('creatorSeatMap'); if (!map) return;
-  for (const b of map.querySelectorAll('.cl-seat')) {
-    const s = deskSeat(b.dataset.desk), state = seatState(e, s);
-    const taken = roster.list.find(o => o.desk === s.id && o.userId !== e.userId), sitter = seatById(s.id)?.owner;
-    b.className = 'cl-seat ' + state; b.disabled = state === 'taken'; b.setAttribute('aria-checked', String(state === 'mine'));
-    const who = taken ? `${fullName(taken)}'s desk` : state === 'taken' ? `${s.island.department} only` : state === 'used' ? `${sitter.name} sits here` : state === 'mine' ? 'selected' : 'free';
-    b.title = `${s.label} · ${who}`; b.setAttribute('aria-label', b.title);
-  }
-  const cur = deskSeat(creator.desk);
-  $('creatorDeskSum').textContent = cur ? cur.label : 'Any free desk';
-  $('creatorAnyDesk').setAttribute('aria-pressed', String(!creator.desk));
-}
-function pickDesk(e, id) { creator.desk = id; paintSeats(e); }
-
-// Names that contain every typed word (first or last name, any order, any case).
-function showMatches(box, query) {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (!words.length) { box.replaceChildren(); return; }
-  const found = roster.list.filter(e => { const n = fullName(e).toLowerCase(); return words.every(w => n.includes(w)); })
-    .sort((a, b) => fullName(a).localeCompare(fullName(b)));
-  box.replaceChildren(...(found.length ? found.slice(0, MAX_MATCHES).map(e => el('button', { type: 'button', class: 'cl-match', role: 'option', on: { click: () => pickEmployee(e.userId) } },
-    el('span', {}, fullName(e)), el('span', { class: 'cl-note' }, jobTitle(e))))
-    : [el('div', { class: 'cl-note' }, 'No one by that name.')]),
-    found.length > MAX_MATCHES ? el('div', { class: 'cl-note' }, `${found.length - MAX_MATCHES} more, keep typing…`) : null);
-}
-// An employee's avatar (photo or initials) on their shirt colour in the office.
-function avatarOf(e) {
-  const box = el('span', { class: 'avatar' }), p = people.find(q => q.userId === e.userId);
-  fillAvatar(box, { name: fullName(e), photo: e.photo, color: p?.spec.top.color ?? '#4c5c6b' });
-  return box;
-}
-function pickEmployee(userId) {
-  if (fullName(employeeById(userId)).toLowerCase() === HAZEL_NAME.toLowerCase()) { alert(HAZEL_LOCKED); return; } // her look is fixed
-  creator.target = userId;
-  creator.draft = lookOf(userId); creator.desk = deskOf(userId); creator.deskIsland = null;
-  rebuild();
-}
 
 // ----- panel widgets -----
 function el(tag, attrs = {}, ...kids) {
@@ -258,9 +186,7 @@ function renderPanel() {
   const panel = $('creatorPanel'), scroll = panel.scrollTop;
   const d = creator.draft, view = creator.view, o = specOptions(d.type), notes = creator.stage.hero.notes ?? [];
   const presets = presetList();
-  panel.replaceChildren(
-    roster.list ? employeePicker() : null,
-    employeeById(creator.target) ? deskPicker(employeeById(creator.target)) : null,
+  panel.replaceChildren(...[ // (sections that do not apply are null: a dress has no separate bottom)
     fold('look', 'Style & presets', sum(STYLE_LABEL[d.type], presets.some(p => p.spec.name === d.name) ? d.name : 'Custom'),
       row('Style', segmented(TYPES, d.type, v => { d.type = v; rebuild(); })),
       notes.length ? el('div', { class: 'cl-note' }, `In this style: ${notes.join(' · ')}. Switch back to restore.`) : null,
@@ -310,7 +236,7 @@ function renderPanel() {
       el('div', { class: 'cl-actions' },
         el('button', { type: 'button', class: 'btn sm', id: 'creatorCopy', on: { click: copyJson } }, 'Copy config'),
         el('button', { type: 'button', class: 'btn sm', on: { click: pasteJson } }, 'Load config from text'))),
-  );
+  ].filter(Boolean));
   updateJson();
   panel.scrollTop = scroll;
 }
@@ -396,15 +322,18 @@ function renderClips() {
   $('creatorClips').replaceChildren(...hero.clipNames.map(n => el('button', { type: 'button', 'aria-pressed': String(n === cur), on: { click: () => { hero.play(n); renderClips(); } } }, n)));
 }
 
-function initCreator() {
+function initCreator(profile) {
+  creator.me = profile?.id ?? null;
+  if (!creator.me) { $('openCreator').disabled = true; return; }
   $('openCreator').onclick = () => openCreator();
-  $('fpCreator').onclick = () => openCreator();
-  $('creatorSave').onclick = () => closeCreator(true);
-  $('creatorCancel').onclick = () => closeCreator(false);
-  $('creatorBack').onclick = () => closeCreator(false);
+  $('creatorSave').onclick = saveMine;
+  $('creatorCancel').onclick = () => closeCreator();
+  $('creatorBack').onclick = () => closeCreator();
+  // someone (or you, in another tab) saved a new look: show it right away
+  onDuel('look:changed', ({ userId, spec }) => { if (typeof userId === 'string' && spec && typeof spec === 'object') applyLook(userId, spec); });
   $('creatorSpin').onclick = e => { creator.spin = !creator.spin; e.currentTarget.setAttribute('aria-pressed', String(creator.spin)); };
   // keys typed in the lab must not steer the camera or the player
-  $('creator').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') closeCreator(false); });
+  $('creator').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') closeCreator(); });
 }
 
 export { closeCreator, creator, initCreator, openCreator };

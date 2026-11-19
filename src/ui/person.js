@@ -31,6 +31,7 @@ function select(p) {
 const fmt = t => { if (!Number.isFinite(t)) return '—'; const h = Math.floor(t / 60) % 24, m = Math.floor(t % 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
 function statusText(p) {
   if (p.state === 'player') return 'Controlled by you';
+  if (p.state === 'remote') return p.task?.spot && ['walk', 'run', 'stand'].indexOf(p.task.anim) < 0 ? 'Sitting down (live)' : 'Walking around (live)';
   if (p.toiletUntil) return 'Deploying to the toilet';
   if (p.absent) return 'Not in today';
   if (p.state === 'away') return p.arrivedAt ? 'Gone home for the day' : `Not in yet, due around ${fmt(p.arriveAt)}`;

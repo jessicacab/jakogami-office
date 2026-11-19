@@ -10,9 +10,13 @@ function equipPerson(person, equipment) {
   applyEquipment(person.body, clean);
   person.body.root.traverse(o => { if (o.isMesh) o.userData.person = person; });
 }
+// Everyone's equipped gear from the last appearance refresh (ui/marketplace.js), also for people who are not among
+// `people` (someone walking in from another browser: people/remote.js).
+const appearance = new Map();
 function applyEquipmentSnapshot(entries) {
-  const byId = new Map(entries.map(entry => [entry.userId, entry.equipped]));
-  for (const person of people) if (person.userId) equipPerson(person, byId.get(person.userId));
+  appearance.clear(); for (const entry of entries) appearance.set(entry.userId, entry.equipped);
+  for (const person of people) if (person.userId) equipPerson(person, appearance.get(person.userId));
 }
+const equipmentOf = userId => appearance.get(userId) ?? null;
 
-export { applyEquipmentSnapshot, equipPerson, equipmentKey };
+export { applyEquipmentSnapshot, equipPerson, equipmentKey, equipmentOf };

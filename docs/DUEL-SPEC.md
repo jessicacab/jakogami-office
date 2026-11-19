@@ -312,3 +312,13 @@ the Sparring Bot (the balance-test bot, `server/duelBots.js`, playing live). Oth
   server answers "Practice duels are only available when running locally" and the panel section stays hidden.
 - Tests: `server/duel.test.js` (off by default; on: starts at once, the bot moves and attacks, your weapon can be
   overridden, nothing saved).
+
+## Office scoreboard (2026-11-19)
+
+A big screen on the north wall above the lounge (the one stretch without windows) shows the **top 5 duellists**:
+wins, then fewest losses, then most draws, then name; only people who have fought at least once. It hangs on its own
+full-height panel like the dining TV, so it stays up when the walls are lowered. It reads the same W–L–D records as the
+person cards (no new data or migration), and refreshes when the office opens, every minute, and shortly after any duel
+ends. This replaces the Phase 1 decision of "no leaderboard" (decision 5), at the user's request.
+Files: `world/furniture/scoreboard.js` (the screen), `ui/scoreboard.js` (fetching), `ui/scoreboardModel.js` (ranking,
+tested in `ui/scoreboard.test.js`).

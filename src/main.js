@@ -13,6 +13,7 @@ import './styles/marketplace.css';
 import './styles/jira.css';
 import './styles/first-person.css';
 import './styles/duel.css';
+import './styles/creator.css';
 
 import { bootstrap } from './bootstrap.js';
 import { disposeBody } from './character/rig.js';
@@ -45,6 +46,9 @@ import { stopAttendance } from './ui/attendance.js';
 import { stopMarketplace } from './ui/marketplace.js';
 import { stopJira } from './ui/jira.js';
 import { stopDuelUi, updateDuelUi } from './ui/duel.js';
+import { stopPresence, updatePresence } from './ui/presence.js';
+import { stopScoreboard } from './ui/scoreboard.js';
+import { remoteVisitors, updateRemote } from './people/remote.js';
 import { arenaTarget, viewing } from './ui/duelArena.js';
 import { updateDuelFx } from './render/duelFx.js';
 import { selRing, select, selected } from './ui/person.js';
@@ -74,12 +78,15 @@ function tick(now) {
     updateScreens(); updateLight();
   }
   updateDuel(dt); // duels run on the server's clock, so they go on while the office clock is paused
+  updateRemote(dt); // coworkers walking in their own browsers (people/remote.js)
   for (const p of people) syncBody(p, dt);
   if (player.person?.id === -1) syncBody(player.person, dt);
   { const m = viewing(); if (m) for (const f of m.fighters) syncBody(f, dt); } // the duel you are watching, on the rooftop
+  for (const p of remoteVisitors()) syncBody(p, dt); // walking in from another browser, not in today
   if (selected) { selRing.visible = selected.state !== 'away'; selRing.position.set(selected.pos.x, .02, selected.pos.z); const s = 1 + Math.sin(now / 260) * .06; selRing.scale.set(s, s, 1); }
   const showLabels = labelState.on && !ctl.active && camState.dist > 15; if (labelGroup.visible !== showLabels) labelGroup.visible = showLabels;
   if (Math.abs(wall.goal - wall.h) > .001) { wall.h += (wall.goal - wall.h) * (1 - Math.exp(-dt * 6)); scalers.forEach(f => f(wall.h)); }
+  updatePresence(now); // your own walk, for everyone else
   keyCam(dt); updateCamera(dt); updateDarts(now, dt); updateKitchen(dt); updateDizzy(dt); updateDuelFx(dt); updateDuelUi(dt);
   // The lounge TV is dedicated to the PS5 fighting game, whether or not someone is currently playing.
   { if (loungeTV.material !== gameMat) loungeTV.material = gameMat; drawGame(dt); }
@@ -127,6 +134,8 @@ function stopOffice() {
   stopAttendance();
   stopMarketplace();
   stopJira();
+  stopPresence();
+  stopScoreboard();
   stopDuelUi();
   select(null);
   for (const person of people) disposeBody(person.body);

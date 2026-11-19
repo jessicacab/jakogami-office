@@ -6,7 +6,7 @@ What is planned, and the design the current structure was built to allow. **None
 
 ### Open world (Phase 1 shipped: walking as yourself and Duel)
 See [DUEL-SPEC.md](DUEL-SPEC.md). Next phases:
-- **Phase 2:** shared presence (see coworkers who are walking, live, over the duel socket), then a jobs board of short office missions with capped coin rewards.
+- **Phase 2:** shared presence (**shipped**: see coworkers who are walking, live; [PRESENCE-SPEC.md](PRESENCE-SPEC.md)), then a jobs board of short office missions with capped coin rewards.
 - **Phase 3:** opt-in office mischief (pranks only on people who opted in) and a "heat" meter where the boss notices.
 - Rule for every phase: nobody is targeted without opting in, and NPCs (real coworkers) are never attacked.
 

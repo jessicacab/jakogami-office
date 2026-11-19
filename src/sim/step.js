@@ -13,7 +13,7 @@ import { interactables } from '../world/interactables.js';
 
 /* ================= Simulation step ================= */
 function stepPerson(p, dt, sdt) {
-  if (p.state === 'player') return;
+  if (p.state === 'player' || p.state === 'remote') return; // you, or someone walking in another browser (people/remote.js)
   if (p.hazel) hazelExtras(p, dt, dt * sim.speed); // her tricycle and her chick (also put away when she is out)
   if (p.state === 'away') {
     if (p.toiletUntil) { if (sim.t >= p.toiletUntil) returnFromToilet(p); return; }

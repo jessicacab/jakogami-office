@@ -49,8 +49,22 @@ async function refresh() {
   }
 }
 
+// Collapse or expand the list (the header stays). Remembered in this browser; storage can be blocked, so it may not be.
+const COLLAPSED_KEY = 'officeSim.ledgerCollapsed';
+function setCollapsed(collapsed) {
+  $('ledger').classList.toggle('collapsed', collapsed);
+  $('attList').hidden = collapsed;
+  const b = $('attToggle'), label = collapsed ? 'Show the list' : 'Hide the list';
+  b.setAttribute('aria-expanded', String(!collapsed)); b.setAttribute('aria-label', label); b.title = label;
+  try { localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (_) {}
+}
+
 function initAttendance() {
   active = true;
+  let collapsed = false;
+  try { collapsed = localStorage.getItem(COLLAPSED_KEY) === '1'; } catch (_) {}
+  setCollapsed(collapsed);
+  $('attToggle').onclick = () => setCollapsed(!$('ledger').classList.contains('collapsed'));
   render();
   if (!roster.list) {
     $('officeTodayDate').textContent = 'Employee roster unavailable';

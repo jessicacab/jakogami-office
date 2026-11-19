@@ -13,11 +13,13 @@ import { player, setSelfEquipment, walkAsSelf } from '../player/player.js';
 import { clearDuelFx, spawnBurst, spawnNumber, spawnOrb } from '../render/duelFx.js';
 import { renderer, scene } from '../render/renderer.js';
 import { duel, duelEnd, duelEvent, duelFight, duelState, startDuel, stopDuel } from '../sim/duel.js';
+import { remoteVisitors } from '../people/remote.js';
 import { people } from '../sim/state.js';
 import { disposeArena } from '../world/arena.js';
 import { $, keyed } from './dom.js';
 import { arenaScene, enterArena, initDuelArena, leaveArena, reconcile, shake, stopDuelArena, updateDuelArena, viewing } from './duelArena.js';
 import { renderPerson, selected } from './person.js';
+import { scoreboardSoon } from './scoreboard.js';
 
 /* ================= Duel: challenges, the panel and the fight HUD ================= */
 // docs/DUEL-SPEC.md. The server (server/duel.js) referees; this module asks it things, passes its events to sim/duel.js
@@ -379,6 +381,7 @@ function markerMaterials() {
 function refreshPeople() {
   ui.personById.clear();
   for (const p of people) if (p.userId) ui.personById.set(p.userId, p);
+  for (const p of remoteVisitors()) ui.personById.set(p.userId, p); // walking in from another browser
   if (player.person?.userId) ui.personById.set(player.person.userId, player.person);
 }
 function syncMarkers() {
@@ -453,6 +456,7 @@ function initEvents() {
     m.deadline = now() + DUEL_TIME.end * 1000; // the result stays up this long, in real time
     ui.guarding = false;
     setTimeout(() => wantRecords(m.userIds, true), 1500);
+    scoreboardSoon(); // the wall scoreboard too
   });
 }
 function initInputs() {

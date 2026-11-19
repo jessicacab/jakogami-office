@@ -4,6 +4,7 @@ import { DUEL_ACTS, DUEL_LIMITS, DUEL_MAX, DUEL_STATE_EVERY, DUEL_TICK_MS, DUEL_
 import { characterAttributes, marketplaceItem, normalizeEquipment } from '../src/config/marketplace.js';
 import { SKILL, botTurn } from './duelBots.js';
 import { act, forfeit, makeFight, move, snapshot, tick } from './duelEngine.js';
+import { makePresenceHub } from './presence.js';
 
 // Duels between signed-in coworkers (docs/DUEL-SPEC.md). The browser side is src/ui/duel.js.
 // makeDuelHub is the referee and knows nothing about sockets: connections are { id, user: { id, name }, available,
@@ -284,7 +285,8 @@ function makeResultSaver(db, log) {
 }
 
 // Socket.IO at /api/socket.io (under /api so the session cookies, Path=/api, are sent), WebSocket only (so the
-// browser always sends Origin), on the app's own HTTP server. Returns { hub, close }.
+// browser always sends Origin), on the app's own HTTP server. The same connection carries live presence
+// (server/presence.js: who is walking around). Returns { hub, presence, io, close }.
 function attachDuel(httpServer, { verify, db, now, rng, practice = false, log = message => console.warn('[duel]', message) }) {
   const io = new Server(httpServer, {
     path: '/api/socket.io', transports: ['websocket'], serveClient: false, maxHttpBufferSize: 4096,
@@ -292,6 +294,7 @@ function attachDuel(httpServer, { verify, db, now, rng, practice = false, log = 
   });
   // practice duels: only when asked for (the local dev server) and never on a Render deployment
   const hub = makeDuelHub({ now, rng, loadGear: makeGearLoader(db), saveResult: makeResultSaver(db, log), log: message => log(message), practice: practice && !process.env.RENDER });
+  const presence = makePresenceHub({ now });
   io.use(async (socket, next) => {
     try {
       const profile = await verify(socket.handshake.headers);
@@ -303,17 +306,19 @@ function attachDuel(httpServer, { verify, db, now, rng, practice = false, log = 
     const { id, full_name: fullName } = socket.data.profile;
     const conn = { id: socket.id, user: { id, name: fullName || 'A coworker' }, available: socket.handshake.auth?.available !== false, emit: (e, d) => socket.emit(e, d) };
     hub.connect(conn);
+    presence.connect(conn);
+    for (const event of ['presence:move', 'presence:stop']) socket.on(event, payload => presence.handle(conn, event, payload));
     for (const event of ['duel:available', 'duel:challenge', 'duel:answer', 'duel:cancel', 'duel:input', 'duel:move', 'duel:practice']) {
       socket.on(event, async (payload, ack) => {
         const result = await hub.handle(conn, event, payload);
         if (result && typeof ack === 'function') ack(result);
       });
     }
-    socket.on('disconnect', () => hub.disconnect(conn));
+    socket.on('disconnect', () => { hub.disconnect(conn); presence.disconnect(conn); });
   });
-  const timer = setInterval(() => hub.tick(), DUEL_TICK_MS);
+  const timer = setInterval(() => { hub.tick(); presence.tick(); }, DUEL_TICK_MS);
   timer.unref?.();
-  return { hub, io, close() { clearInterval(timer); io.disconnectSockets(true); } };
+  return { hub, presence, io, close() { clearInterval(timer); io.disconnectSockets(true); } };
 }
 
 export { attachDuel, makeDuelHub, makeGearLoader };

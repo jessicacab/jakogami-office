@@ -90,3 +90,7 @@
 }
 
 .cl-me-who{flex:1;min-width:0}
+
+#creatorStatus{margin:0 auto 0 0;align-self:center;font-size:12.5px;color:var(--muted)}
+#creatorStatus.error{color:var(--slap)}
+#creatorSave:disabled{opacity:.6;cursor:wait}

@@ -13,7 +13,9 @@ import { initMarketplace } from './ui/marketplace.js';
 import { initJira } from './ui/jira.js';
 import { initControl } from './player/control.js';
 import { initPlayer, setSelfEquipment } from './player/player.js';
+import { initCreator } from './ui/creator.js';
 import { initDuel } from './ui/duel.js';
+import { initPresence } from './ui/presence.js';
 import { initPerson } from './ui/person.js';
 import { initSearch } from './ui/search.js';
 import { buildBake } from './world/bake.js';
@@ -25,6 +27,8 @@ import { buildDesks } from './world/furniture/desks.js';
 import { buildGame } from './world/furniture/game.js';
 import { buildKitchen } from './world/furniture/kitchen.js';
 import { buildLounge } from './world/furniture/lounge.js';
+import { buildScoreboard } from './world/furniture/scoreboard.js';
+import { initScoreboard } from './ui/scoreboard.js';
 import { buildWalls } from './world/walls.js';
 
 // The order below is the order the scene is assembled in. It matters: furniture registers interactables and
@@ -39,6 +43,7 @@ export function bootstrap(profile) {
   buildGame();
   buildKitchen();
   buildEntrance();
+  buildScoreboard(); // the duel leaderboard on the north wall
   buildBake();
   initChannels(); // every TV screen, for changing channels
   initLabels();
@@ -66,4 +71,7 @@ export function bootstrap(profile) {
   initMarketplace(profile, { people, applyEquipmentSnapshot: snapshot, equipPerson, equipSelf: setSelfEquipment });
   initJira(profile);
   initDuel(profile);
+  initPresence(); // (on the duel connection, which initDuel opens)
+  initScoreboard();
+  initCreator(profile); // My character (after initDuel: it listens for others' new looks)
 }

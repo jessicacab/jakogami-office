@@ -105,3 +105,38 @@ exception when insufficient_privilege then null;
 end;
 $$;
 reset role;
+
+-- character looks (202611200001): the server writes; browsers cannot read or write the table
+\ir ../migrations/202611200001_character_looks.sql
+\ir ../migrations/202611200001_character_looks.sql
+set role service_role;
+insert into public.office_character_looks (user_id, spec) values ('11111111-1111-1111-1111-111111111111', '{"body":"female"}');
+update public.office_character_looks set spec = '{"body":"male"}' where user_id = '11111111-1111-1111-1111-111111111111';
+reset role;
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$
+begin
+  begin
+    perform count(*) from public.office_character_looks;
+    raise exception 'looks readable by a browser session';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.office_character_looks (user_id, spec) values ('22222222-2222-2222-2222-222222222222', '{}');
+    raise exception 'look written by a browser session';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+reset role;
+do $$
+begin
+  assert (select spec->>'body' from public.office_character_looks where user_id = '11111111-1111-1111-1111-111111111111') = 'male', 'server update lost';
+  begin
+    insert into public.office_character_looks (user_id, spec) values ('22222222-2222-2222-2222-222222222222', jsonb_build_object('x', repeat('a', 9000)));
+    raise exception 'an oversized look was accepted';
+  exception when check_violation then null;
+  end;
+end;
+$$;

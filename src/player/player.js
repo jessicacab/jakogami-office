@@ -68,6 +68,7 @@ function setPlayerSpec(raw) {
   for (const k of PROPS) body[k].visible = old[k].visible; // keep what an activity put in the hands
   peopleGroup.remove(old.root); disposeBody(old);
   p.spec = player.spec; p.body = body;
+  if (self.equipment) equipPerson(p, self.equipment); // keep your gear on
   return player.spec;
 }
 

@@ -1,6 +1,14 @@
 /* Top right: today's in-office roster */
 #ledger{top:calc(16px + env(safe-area-inset-top,0px));right:16px;width:290px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px;border-radius:var(--radius-xs)}
+.office-today-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .office-today-head h2{margin:0;font:600 13px var(--f-display);color:var(--ink)}
+/* collapse / expand the list: the chevron points up when open (click to hide), down when hidden */
+#attToggle{width:28px;height:28px;margin:-2px -4px 0 0;border-radius:var(--radius-xs);background:transparent;border-color:transparent;color:var(--muted)}
+#attToggle:hover{background:var(--chip);border-color:var(--line);color:var(--ink)}
+#attToggle svg{transition:transform .18s ease}
+#ledger.collapsed #attToggle svg{transform:rotate(180deg)}
+#ledger.collapsed{gap:0;padding-bottom:12px}
+@media (prefers-reduced-motion:reduce){#attToggle svg{transition:none}}
 .office-today-head h2 b{font:500 12px var(--f-mono);color:var(--muted);margin-left:4px}
 .att-sub{font-size:11.5px;color:var(--muted)}
 #attList{list-style:none;margin:0;padding:0;overflow-y:auto;max-height:min(480px,calc(100vh - 140px));display:flex;flex-direction:column}
