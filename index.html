@@ -171,7 +171,6 @@
         <dt>K · Shift · right click</dt><dd>guard (just in time: parry)</dd>
         <dt>Q</dt><dd>Focus Blast</dd>
         <dt>WASD (in the arena)</dt><dd>close in, back off, circle</dd>
-        <dt>Space</dt><dd>jump over blasts and bolts</dd>
       </dl>
       <p class="pop-note">Click an employee to see their status. Open Marketplace to customize your character; your equipped gear shapes your duels. A duel only starts when the other person accepts.</p>
     </div>
@@ -244,7 +243,6 @@
       <li><kbd>J</kbd> or left click: <b>Strike</b>. <kbd>K</kbd>, <kbd>Shift</kbd> or hold right click: <b>Guard</b>, which takes 30% of a strike. Start guarding just before a strike lands to <b>parry</b> it: no damage, and the striker is staggered.</li>
       <li>Duels happen on the <b>office rooftop</b>. <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move you, always facing the other one: close in to strike (strikes reach about 1.8 m), back off to make theirs miss.</li>
       <li><kbd>Q</kbd>: <b>Focus Blast</b>. Costs 50 mana and can't be guarded, but it flies to where they stood: step aside and it misses.</li>
-      <li><kbd>Space</kbd>: <b>Jump</b>. A Focus Blast or a gun's bolt that arrives while you're in the air flies under you. Melee still hits you, and you can't strike or guard mid-air.</li>
       <li><b>Weapons</b> (Marketplace) change your strike: swords, a staff and a hammer reach further or hit harder; the pulse pistol and ion rifle fire bolts from across the helipad but slow you down. A bolt can be sidestepped, mostly stopped by a guard, or deflected by a perfectly timed one.</li>
       <li>Gear tilts a fight, skill decides it: STR adds health and damage, AGI strikes faster and dodges more, INT strengthens Focus Blast, mana and critical hits.</li>
       <li>A knockout wins. After 90 seconds, the higher health wins. Leaving for more than 10 seconds forfeits. No coins change hands.</li>
@@ -361,13 +359,12 @@
       <button type="button" class="duel-act" id="duelStrike"><kbd>J</kbd><span id="duelStrikeVerb">Strike</span><i class="duel-cd" id="duelStrikeCd"></i></button>
       <button type="button" class="duel-act" id="duelGuard"><kbd>K</kbd><span>Guard</span></button>
       <button type="button" class="duel-act blast" id="duelBlast"><kbd>Q</kbd><span>Blast</span><i class="duel-cd" id="duelBlastCd"></i></button>
-      <button type="button" class="duel-act" id="duelJump"><kbd aria-label="Space">␣</kbd><span>Jump</span></button>
     </div>
     <div class="duel-hud-acts">
       <button type="button" class="btn sm" id="duelWatch" hidden>Watch on the rooftop</button>
       <button type="button" class="btn sm" id="duelLeave" hidden>Back to the office</button>
     </div>
-    <p class="duel-hint" id="duelHint"><kbd>WASD</kbd> move · <kbd>Space</kbd> jump · <kbd>J</kbd> strike · <kbd>K</kbd> guard · <kbd>Q</kbd> blast</p>
+    <p class="duel-hint" id="duelHint"><kbd>WASD</kbd> move · <kbd>J</kbd> strike · <kbd>K</kbd> guard · <kbd>Q</kbd> blast</p>
   </section>
   <section class="card" id="duelCard" hidden>
     <p id="duelMsg" role="status" aria-live="polite" hidden></p>

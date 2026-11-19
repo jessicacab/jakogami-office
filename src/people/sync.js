@@ -7,7 +7,7 @@ import { applyPose } from './animation.js';
 function syncBody(p, dt) {
   if (p.state === 'away') return;
   if (!sim.paused || p.state === 'player' || p.task?.duel) applyPose(p, dt); // duels run on the server's clock, paused or not
-  const b = p.body; b.root.position.set(p.pos.x, p.pos.y || 0, p.pos.z); b.root.rotation.y = p.face; // (y: a jump in a duel)
+  const b = p.body; b.root.position.set(p.pos.x, 0, p.pos.z); b.root.rotation.y = p.face;
   b.ring.position.set(p.pos.x, .015, p.pos.z);
   updateEquipment(b, p.animT);
   const cat = p.state === 'walking' ? 'walk' : (p.task?.kind === 'work' && p.chatWith ? 'chat' : p.task?.cat || 'walk');

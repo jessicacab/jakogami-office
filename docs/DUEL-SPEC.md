@@ -282,8 +282,10 @@ A fourth Marketplace slot, **weapon**, held in the right hand. Weapons are the m
 - Tests: weapon rules in `server/duelEngine.test.js`; weapon balance (each alone, every pairing, full set with each weapon, and that skill matters for every weapon) in `server/duelBalance.test.js`; the migration on real PostgreSQL (run twice, buy and equip a katana, wrong slot and unowned refused, the weapon in the shared appearance, the original appearance function intact) in `supabase/tests/marketplace_session_access.sql`.
 - Checked in headless browsers: the Weapons tab, a katana vs pulse pistol duel on the rooftop (Slash / Shoot buttons, bolts, misses, a KO), no console errors.
 
-### Jump (added 2026-11-19)
+### Jump (added and removed 2026-11-19)
 
 - **Space** (or the Jump button) jumps: 0.55 s in the air, 0.75 m high, once every 1.3 s. Anything fired (Focus Blast or a gun's bolt) that arrives while you are in the air flies under you ("Jumped!"); melee still hits you in the air; no striking, casting or guarding mid-air. The server decides it like every other action (`jump` input, `jump` event to everyone).
 - It gives the target of a gun a skill answer: with bots that jump some of the time, a skilled player in base gear now wins about 25–27% against an average player with a full set and a gun (was 15–17%). All balance targets still pass.
 - Checked: engine test (blast and bolt cleared mid-air, melee still hits, no acting mid-air, cooldown); in headless browsers six jumps reached the other screen and five pistol bolts were jumped over.
+- **Removed** the same day at the user's request. Its balance effect is gone with it: against an average player with a full set and a gun, a skilled player in base gear is back to about 15–17%.
+- While investigating "can't walk up to the opponent" (reported on the Render deployment), the real cause turned out to be unrelated to the jump: the browser compared the server's (slightly delayed) position for you with where you are *now* and pulled you back whenever they differed by 0.6 m, which on a real network was most of the time. Now it compares with the positions it recently sent and only snaps back when the server really corrected you (`reconcile` in `ui/duelArena.js`). Verified with a simulated 150 ms and 300 ms delay: both fighters walk right up to each other.

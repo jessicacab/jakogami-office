@@ -47,11 +47,7 @@ const WEAPONS = {
 const weaponOf = id => WEAPONS[marketplaceItem(id)?.slot === 'weapon' ? marketplaceItem(id).model : 'fists'] ?? WEAPONS.fists;
 
 const DUEL_LIMITS = { inviteMs: 20000, spacingMs: 5000, repeatMs: 5 * 60000, maxInvites: 50, inputsPerSec: 20, movesPerSec: 30 };
-const DUEL_ACTS = ['strike', 'guardOn', 'guardOff', 'blast', 'jump'];
-// A jump (Space): in the air for `air` seconds, `height` metres at the top; once every `cooldown` seconds. Anything fired
-// (a Focus Blast or a gun's bolt) that arrives while you are in the air flies under you; melee still hits. No striking,
-// casting or guarding in the air.
-const JUMP = { air: .55, height: .75, cooldown: 1.3 };
+const DUEL_ACTS = ['strike', 'guardOn', 'guardOff', 'blast'];
 const DUEL_RESULTS = ['ko', 'time', 'forfeit', 'draw'];
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -76,5 +72,5 @@ function duelStats(total = BASE_ATTRIBUTES, weaponId = null) {
 
 export {
   ARENA, BLAST, CRIT, DODGE, DRAW_MARGIN, DUEL_ACTS, DUEL_LIMITS, DUEL_MAX, DUEL_RESULTS, DUEL_STATE_EVERY, DUEL_TICK_MS,
-  DUEL_TIME, GUARD, HP, JUMP, MANA, MOVE, PER_POINT, STRIKE, WEAPONS, duelStats,
+  DUEL_TIME, GUARD, HP, MANA, MOVE, PER_POINT, STRIKE, WEAPONS, duelStats,
 };

@@ -35,7 +35,7 @@ body.tp #duelStack,body.fp #duelStack{top:calc(96px + env(safe-area-inset-top,0p
 #duelWatch{align-self:center}
 
 /* your controls: a cooldown sweeps back across each button */
-.duel-controls{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.duel-controls{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .duel-act{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--chip);color:var(--ink);font:700 13px/1 var(--f-body);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .duel-act:hover{border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
 .duel-act:disabled{opacity:.5;cursor:not-allowed}

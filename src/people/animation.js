@@ -123,7 +123,6 @@ function targetPose(p, k, T) {
     case 'duelDodge': o.hipY = .78; o.lHip = o.rHip = -.4; o.lKnee = o.rKnee = .8; o.lShX = o.rShX = -1; o.lEl = o.rEl = -.9; o.lean = .15; break;
     case 'duelAim': o.rShX = -1.5; o.rShZ = .05; o.rEl = -.05; o.lShX = -1.1; o.lEl = -.9; o.lShZ = .25; o.lean = .02; o.headX = .05; o.hipY = .85; break; // a gun raised
     case 'duelShoot': o.rShX = -1.3; o.rShZ = .05; o.rEl = -.1; o.lShX = -1.1; o.lEl = -.9; o.lShZ = .25; o.lean = -.08; o.headX = -.05; o.hipY = .85; break; // and its kick
-    case 'duelJump': o.lHip = o.rHip = -.9; o.lKnee = o.rKnee = 1.2; o.lShX = o.rShX = -1.1; o.lShZ = .45; o.rShZ = -.45; o.lEl = o.rEl = -.5; o.lean = .1; break; // knees tucked
     case 'duelLose': o.lShX = o.rShX = .1; o.lShZ = .08; o.rShZ = -.08; o.headX = .45; o.lean = .12; break;
     case 'cheer': { const h = Math.max(0, Math.sin(T * 7)); o.lShX = o.rShX = -2.7 - h * .2; o.lShZ = .35; o.rShZ = -.35; o.lEl = o.rEl = -.15; o.hipY = .88 + h * .05; o.headX = -.2; break; }
     default: o.lShX = Math.sin(T * .9) * .05; o.rShX = -Math.sin(T * .9) * .05; break;

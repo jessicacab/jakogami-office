@@ -13,7 +13,7 @@ import { $ } from './dom.js';
 // Your movement is shown at once and sent to the server 20 times a second; it limits speed and keeps you on the pad
 // (sim/duel.js pulls you back if it disagrees by a lot).
 const view = {
-  match: null, keys: new Set(), stick: { id: null, x: 0, y: 0, ox: 0, oy: 0 }, sentAt: 0, sent: null,
+  match: null, keys: new Set(), stick: { id: null, x: 0, y: 0, ox: 0, oy: 0 }, sentAt: 0, sent: null, trail: [],
   pos: new THREE.Vector3(), look: new THREE.Vector3(), goal: new THREE.Vector3(), aim: new THREE.Vector3(), orbit: 0, prepared: false, listeners: [],
 };
 const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
@@ -30,7 +30,7 @@ function arenaScene() { return buildArena().scene; }
 
 function enterArena(m) {
   arenaScene();
-  view.match = m; view.keys.clear(); view.orbit = 0; view.sent = null;
+  view.match = m; view.keys.clear(); view.orbit = 0; view.sent = null; view.trail.length = 0;
   arena.camera.aspect = innerWidth / innerHeight; arena.camera.updateProjectionMatrix();
   document.body.classList.add('arena');
   view.pos.copy(INTRO_FROM); view.look.set(0, 1, 0);
@@ -100,8 +100,21 @@ function steer(m, dt, now) {
   const moved = !view.sent || Math.abs(me.pos.x - view.sent.x) > .005 || Math.abs(me.pos.z - view.sent.z) > .005;
   if (moved && now - view.sentAt >= MOVE.sendMs) {
     view.sentAt = now; view.sent = { x: me.pos.x, z: me.pos.z };
+    view.trail.push({ t: now, x: me.pos.x, z: me.pos.z });
+    while (view.trail.length && now - view.trail[0].t > 1500) view.trail.shift();
     sendDuel('duel:move', { id: m.id, x: Math.round(me.pos.x * 100) / 100, z: Math.round(me.pos.z * 100) / 100 });
   }
+}
+
+// The server's position for you arrived (ui/duel.js, on each state update). On a real network it describes where you
+// were a moment ago, so it is compared with the positions you recently sent: if it matches one, all is well; only if
+// it matches none has the server corrected you (too fast, off the helipad, into the other one), and you snap to it.
+// (Comparing with where you are now pulled you back constantly whenever the connection had some delay.)
+function reconcile(m) {
+  if (m !== view.match || m.mine === null || m.phase !== 'fight') return;
+  const me = m.fighters[m.mine], g = me.goal;
+  const fine = Math.hypot(me.pos.x - g.x, me.pos.z - g.z) < .6 || view.trail.some(p => Math.hypot(p.x - g.x, p.z - g.z) < .35);
+  if (!fine) { me.pos.x = g.x; me.pos.z = g.z; view.trail.length = 0; }
 }
 
 // Per frame, from ui/duel.js: only the duel you look at is shown; your fighter moves; the camera follows.
@@ -171,4 +184,4 @@ function stopDuelArena() {
   view.listeners.length = 0;
 }
 
-export { arenaScene, arenaTarget, enterArena, initDuelArena, leaveArena, stopDuelArena, updateDuelArena, viewing };
+export { arenaScene, arenaTarget, enterArena, initDuelArena, leaveArena, reconcile, stopDuelArena, updateDuelArena, viewing };

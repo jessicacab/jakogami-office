@@ -1,4 +1,4 @@
-import { ARENA, BLAST, CRIT, DRAW_MARGIN, DUEL_TIME, GUARD, JUMP, MANA, MOVE, STRIKE, WEAPONS } from '../src/config/duel.js';
+import { ARENA, BLAST, CRIT, DRAW_MARGIN, DUEL_TIME, GUARD, MANA, MOVE, STRIKE, WEAPONS } from '../src/config/duel.js';
 
 // One duel's fight, refereed on the server (server/duel.js). Pure: time comes in as `now` (ms) and chance from the
 // injected `rng`, so tests and the balance simulation can replay fights exactly. Fighters only send intents (act)
@@ -16,7 +16,7 @@ const weapon = me => me.stats.weapon ?? WEAPONS.fists; // (stats made before wea
 function fighter(stats, now, x) {
   return {
     stats, hp: stats.hp, mana: MANA.start, guard: false, guardAt: -Infinity, parryable: false, rearmAt: now,
-    strikeAt: now, blastAt: now, staggerUntil: 0, pending: null, dealt: 0, airUntil: 0, jumpAt: now,
+    strikeAt: now, blastAt: now, staggerUntil: 0, pending: null, dealt: 0,
     pos: { x, z: 0 }, movedAt: now, budget: 0,
   };
 }
@@ -61,12 +61,7 @@ function move(fight, side, x, z, now) {
 // A fighter's intent. Returns the event to tell everyone, or null when it is not allowed right now.
 function act(fight, side, kind, now) {
   if (fight.over) return null;
-  const me = fight.f[side], busy = !!me.pending || now < me.staggerUntil || now < me.airUntil; // (nothing else mid-air)
-  if (kind === 'jump') {
-    if (busy || me.guard || now < me.jumpAt) return null;
-    me.airUntil = now + ms(JUMP.air); me.jumpAt = now + ms(JUMP.cooldown);
-    return { who: side, kind: 'jump', ms: ms(JUMP.air) };
-  }
+  const me = fight.f[side], busy = !!me.pending || now < me.staggerUntil;
   if (kind === 'strike') { // with fists, a melee weapon, or a gun (its wind-up and cooldown: config/duel.js WEAPONS)
     if (busy || me.guard || now < me.strikeAt) return null;
     const w = weapon(me);
@@ -128,7 +123,6 @@ function land(fight, side) {
 // staggered, like a parry).
 function arrive(fight, shot) {
   const me = fight.f[shot.side], them = fight.f[1 - shot.side], mult = shot.crit ? CRIT.mult : 1;
-  if (shot.at < them.airUntil) return { who: shot.side, kind: 'fizzle', act: shot.kind, jumped: true }; // jumped over it
   if (shot.kind === 'blast') {
     if (dist(them.pos, shot.aim) > BLAST.radius) return { who: shot.side, kind: 'fizzle' };
     return hit(fight, shot.side, me.stats.blast * mult, 'blast', shot.crit);

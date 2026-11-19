@@ -1,18 +1,18 @@
 import { characterAttributes } from '../src/config/marketplace.js';
-import { BLAST, DUEL_TICK_MS, JUMP, MOVE, WEAPONS, duelStats } from '../src/config/duel.js';
+import { BLAST, DUEL_TICK_MS, MOVE, WEAPONS, duelStats } from '../src/config/duel.js';
 import { act, dist, makeFight, move, tick } from './duelEngine.js';
 
 // Bot fighters for the balance test (duelBalance.test.js): they play a whole duel against the real engine, moving
 // and all, so a change to the rules or the catalog shows up as a change in who wins. Not used by the running app.
-// Skill, as chances when they see something coming: `jump` timing a jump over something fired, `parry` timing a parry
-// against a strike (or deflecting a bolt), `space` stepping out of
+// Skill, as chances when they see something coming: `parry` timing a parry against a strike (or deflecting a bolt),
+// `space` stepping out of
 // reach instead, `block` at least holding a guard, `sidestep` getting out of a blast's way. `react`: how late (ms) a
 // plain block comes; `hesitate`: the most (ms) they wait before attacking again (people do not press buttons in
 // lockstep; without it, fights turn on who needs one hit fewer).
 const SKILL = {
-  novice: { jump: .05, parry: .05, space: .05, block: .15, sidestep: .2, react: 260, hesitate: 600 },
-  average: { jump: .2, parry: .25, space: .2, block: .35, sidestep: .5, react: 200, hesitate: 400 },
-  skilled: { jump: .45, parry: .5, space: .35, block: .5, sidestep: .8, react: 150, hesitate: 250 },
+  novice: { parry: .05, space: .05, block: .15, sidestep: .2, react: 260, hesitate: 600 },
+  average: { parry: .25, space: .2, block: .35, sidestep: .5, react: 200, hesitate: 400 },
+  skilled: { parry: .5, space: .35, block: .5, sidestep: .8, react: 150, hesitate: 250 },
 };
 const build = equipment => duelStats(characterAttributes(equipment).total, equipment.weapon ?? null);
 // Full sets from the current catalog (src/config/marketplace.js), one per attribute focus.
@@ -34,10 +34,6 @@ function play(fight, side, bot, skill, now, rng) {
   // something fired at me: maybe step out of its way (bolts are faster: harder), else guard against a bolt
   for (const s of fight.shots) if (s.side !== side && bot.shot !== s) {
     bot.shot = s;
-    // jump over it: in the air when it arrives (a jump lasts JUMP.air), if the jump is ready by then
-    const free = !me.pending && !me.guard && !bot.plan && now >= me.staggerUntil && now >= me.airUntil;
-    const hop = s.at - JUMP.air * 500 - rng() * 120; // so it arrives about mid-jump
-    if (free && me.jumpAt <= Math.max(now, hop) && rng() < skill.jump) { bot.dodge = null; bot.hop = hop; continue; }
     const speed = s.kind === 'bolt' ? them.stats.weapon.speed : BLAST.speed; // the faster it flies, the harder to get out of the way
     bot.dodge = rng() < skill.sidestep * Math.min(1, BLAST.speed / speed) ? { until: s.at, dir: rng() < .5 ? 1 : -1 } : null;
     if (!bot.dodge && s.kind === 'bolt') { // stand and deflect it with a timed guard, or at least block
@@ -66,7 +62,6 @@ function play(fight, side, bot, skill, now, rng) {
   else if ((bot.back && now < bot.back) || further) { tx -= ux * step; tz -= uz * step; }
   else if (closer) { tx += ux * step; tz += uz * step; }
   move(fight, side, tx, tz, now);
-  if (bot.hop !== undefined && now >= bot.hop) { act(fight, side, 'jump', now); bot.hop = undefined; }
   if (bot.plan) {
     if (now >= bot.plan.off) { act(fight, side, 'guardOff', now); bot.plan = null; }
     else if (now >= bot.plan.on && !me.guard) act(fight, side, 'guardOn', now);

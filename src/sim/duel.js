@@ -1,4 +1,4 @@
-import { ARENA, DUEL_TIME, JUMP, MOVE } from '../config/duel.js';
+import { ARENA, DUEL_TIME, MOVE } from '../config/duel.js';
 import { angDiff } from '../core/util.js';
 import { addLog } from './state.js';
 import { endTask } from './tasks.js';
@@ -53,7 +53,7 @@ function startDuel(o) {
     id: o.id, names: o.names, userIds: o.userIds, mine: o.mine ?? null, phase: o.phase === 'fight' ? 'fight' : 'intro', t: 0, stats: o.stats,
     hp: o.state?.hp ?? o.stats.map(s => s.hp), mana: o.state?.mana ?? [50, 50], guard: o.state?.guard ?? [false, false],
     wind: [null, null], swing: [null, null], hurt: [null, null], dodged: [null, null], missed: [null, null], stagger: [0, 0], lastAct: [null, null],
-    air: [null, null], winner: null, result: null, dealt: [0, 0], office: [...o.office], was: [null, null], onStop: o.onStop ?? (() => {}),
+    winner: null, result: null, dealt: [0, 0], office: [...o.office], was: [null, null], onStop: o.onStop ?? (() => {}),
   };
   m.fighters = o.bodies.map((body, i) => arenaFighter(body, i ? ARENA.start : -ARENA.start, m, i));
   if (o.state?.pos) duelState(m, o.state, true);
@@ -70,7 +70,6 @@ function duelEvent(m, e) {
   const s = e.who, o = 1 - s;
   if (e.kind === 'windup') { m.wind[s] = { act: e.act, t: 0, dur: e.ms / 1000 }; return; }
   if (e.kind === 'guard') { m.guard[s] = !!e.on; return; }
-  if (e.kind === 'jump') { m.air[s] = { t: 0, dur: e.ms / 1000 }; return; }
   if (e.kind === 'fizzle') { m.dodged[o] = 0; return; } // a blast that found nobody there
   if (e.kind === 'blast') { m.hp[o] = Math.max(0, m.hp[o] - e.dmg); m.hurt[o] = 0; m.dealt[s] += e.dmg; return; } // it arrives
   m.lastAct[s] = m.wind[s]?.act ?? 'strike';
@@ -80,13 +79,14 @@ function duelEvent(m, e) {
   else if (e.kind === 'miss') m.missed[s] = 0;
   else if (e.kind === 'parry') { m.stagger[s] = e.ms / 1000; m.swing[s] = null; }
 }
-// The server's picture, 20 times a second. Your own position is yours unless the server disagrees by a lot (it
-// limits speed): then it is pulled back. `snap` puts everyone where the server says at once (joining late).
+// The server's picture, 20 times a second. The other fighter glides to `goal`; your own position stays yours (ui/
+// duelArena.js decides when the server has really corrected you: the server's view of you is always a little behind
+// on a real network). `snap` puts everyone where the server says at once (joining late).
 function duelState(m, s, snap = false) {
   m.hp = s.hp; m.mana = s.mana; m.guard = s.guard;
   s.pos?.forEach(([x, z], i) => {
     const f = m.fighters[i]; f.goal = { x, z };
-    if (snap || (i === m.mine && Math.hypot(f.pos.x - x, f.pos.z - z) > .6)) { f.pos.x = x; f.pos.z = z; }
+    if (snap) { f.pos.x = x; f.pos.z = z; }
   });
 }
 function duelEnd(m, winner, result, dealt) {
@@ -110,7 +110,6 @@ function pose(m, f, i) {
   let a = null;
   const gun = m.stats[i].weapon?.kind === 'gun';
   if (m.phase === 'end') a = i === m.winner ? 'cheer' : m.winner === null ? 'duelReady' : m.result === 'ko' ? 'slapKO' : 'duelLose';
-  else if (m.air[i]) a = 'duelJump';
   else if (m.stagger[i] > 0) a = 'slapDizzy';
   else if (m.hurt[i] !== null && m.hurt[i] < .35) a = 'duelHurt';
   else if (m.wind[i]) a = m.wind[i].act === 'blast' ? 'duelCharge' : gun ? 'duelAim' : 'duelWind';
@@ -133,8 +132,6 @@ function updateDuel(dt) {
       for (const key of ['swing', 'hurt', 'dodged', 'missed']) if (m[key][i] !== null) m[key][i] += dt;
       m.stagger[i] = Math.max(0, m.stagger[i] - dt);
       const f = m.fighters[i];
-      // a jump: up and down over its time in the air
-      if (m.air[i]) { m.air[i].t += dt; const k = m.air[i].t / m.air[i].dur; if (k >= 1) { m.air[i] = null; f.pos.y = 0; } else f.pos.y = JUMP.height * Math.sin(Math.PI * k); }
       if (i !== m.mine || m.phase !== 'fight') { f.pos.x += (f.goal.x - f.pos.x) * k; f.pos.z += (f.goal.z - f.pos.z) * k; }
       const moved = Math.hypot(f.pos.x - f.last.x, f.pos.z - f.last.z);
       f.moving = moved > MOVE.speed * dt * .15;

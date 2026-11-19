@@ -15,7 +15,7 @@ import { duel, duelEnd, duelEvent, duelFight, duelState, startDuel, stopDuel } f
 import { people } from '../sim/state.js';
 import { disposeArena } from '../world/arena.js';
 import { $, keyed } from './dom.js';
-import { arenaScene, enterArena, initDuelArena, leaveArena, stopDuelArena, updateDuelArena, viewing } from './duelArena.js';
+import { arenaScene, enterArena, initDuelArena, leaveArena, reconcile, stopDuelArena, updateDuelArena, viewing } from './duelArena.js';
 import { renderPerson, selected } from './person.js';
 
 /* ================= Duel: challenges, the panel and the fight HUD ================= */
@@ -166,7 +166,7 @@ function effects(m, e) {
     if (bolt) spawnBurst(handsOf(a).setY(1.25), 0xffb347, .3, into);
   }
   else if (e.kind === 'blast') { spawnBurst(at(b, 1.15), 0x8cc7ea, .9, into); spawnNumber(over, `-${dmg}${e.crit ? '!' : ''}`, '#8cc7ea', into); }
-  else if (e.kind === 'fizzle') spawnNumber(over, e.jumped ? 'Jumped!' : 'Dodged', '#a7d6be', into);
+  else if (e.kind === 'fizzle') spawnNumber(over, 'Dodged', '#a7d6be', into);
   else if (e.kind === 'hit') { spawnBurst(at(b, 1.15), e.crit ? 0xffd36b : 0xffffff, e.crit ? .8 : .5, into); spawnNumber(over, `-${dmg}${e.crit ? '!' : ''}`, e.crit ? '#ffd36b' : '#ffffff', into); }
   else if (e.kind === 'guarded') { spawnBurst(at(b, 1.15), 0x9fb3c0, .35, into); spawnNumber(over, `-${dmg}`, '#c7d3db', into); }
   else if (e.kind === 'miss') spawnNumber(over, 'Miss', '#c7d3db', into);
@@ -416,7 +416,7 @@ function initEvents() {
   onDuel('duel:start', v => begin(v));
   onDuel('duel:fight', v => { const m = byId(v.id); if (!m) begin(v); else { duelFight(m); if (v.state) duelState(m, v.state); setDeadline(m, v); } });
   onDuel('duel:event', e => { const m = byId(e.id); if (!m) return; duelEvent(m, e); effects(m, e); });
-  onDuel('duel:state', s => { const m = byId(s.id); if (m) duelState(m, s); });
+  onDuel('duel:state', s => { const m = byId(s.id); if (m) { duelState(m, s); reconcile(m); } });
   onDuel('duel:control', ({ id, mine }) => { const m = byId(id); if (m) m.mine = mine; });
   onDuel('duel:end', ({ id, winner, result, dealt }) => {
     const m = byId(id); if (!m) return;
@@ -427,14 +427,13 @@ function initEvents() {
   });
 }
 function initInputs() {
-  // keys: J strike, K or Shift guard (hold), Q or L blast, Space jump; only in your own duel (they do nothing else then)
+  // keys: J strike, K or Shift guard (hold), Q or L blast; only in your own duel (they do nothing else then)
   listen(window, 'keydown', e => {
     if (!myFight() || typing(e) || e.metaKey || e.ctrlKey) return;
     const k = e.key.toLowerCase();
     if (k === 'j') { if (!e.repeat) act('strike'); }
     else if (k === 'k' || k === 'shift') guard(true);
     else if (k === 'q' || k === 'l') { if (!e.repeat) act('blast'); }
-    else if (k === ' ') { if (!e.repeat) act('jump'); }
     else return;
     e.preventDefault(); e.stopPropagation();
   }, true);
@@ -455,7 +454,6 @@ function initInputs() {
   // the HUD's buttons (touch, or a freed cursor)
   listen($('duelStrike'), 'click', () => act('strike'));
   listen($('duelBlast'), 'click', () => act('blast'));
-  listen($('duelJump'), 'click', () => act('jump'));
   listen($('duelGuard'), 'pointerdown', e => { e.preventDefault(); guard(true); });
   for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) listen($('duelGuard'), ev, () => guard(false));
 }

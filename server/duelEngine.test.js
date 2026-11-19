@@ -232,28 +232,3 @@ test('guns: a bolt flies, can be guarded (mostly stopped), deflected by a timed 
   const moved = -ARENA.start - f.f[0].pos.x;
   assert.ok(moved < MOVE.speed * MOVE.slack * P.pace + .01, `a pistol slows you: ${moved}`);
 });
-
-test('jump: clears a blast or a bolt that arrives mid-air; melee still hits; no acting mid-air; cooldown', async () => {
-  const { JUMP, WEAPONS } = await import('../src/config/duel.js');
-  let f = makeFight(base, base, 0, queue(.99));
-  act(f, 0, 'blast', 0);
-  const [fire] = tick(f, BLAST.windup * 1000), arrives = BLAST.windup * 1000 + fire.ms + 1;
-  assert.deepEqual(act(f, 1, 'jump', arrives - 200), { who: 1, kind: 'jump', ms: JUMP.air * 1000 });
-  assert.deepEqual(tick(f, arrives)[0], { who: 0, kind: 'fizzle', act: 'blast', jumped: true });
-  assert.equal(f.f[1].hp, HP);
-  assert.equal(act(f, 1, 'strike', arrives), null, 'no striking mid-air');
-  assert.equal(act(f, 1, 'guardOn', arrives), null, 'no guarding mid-air');
-  assert.equal(act(f, 1, 'jump', arrives - 200 + JUMP.air * 1000 + 10), null, 'cooldown');
-  assert.ok(act(f, 1, 'jump', arrives - 200 + JUMP.cooldown * 1000));
-
-  const pistol = duelStats(undefined, 'weapon-pistol');
-  f = makeFight(pistol, base, 0, queue(...NO_LUCK));
-  act(f, 0, 'strike', 0);
-  const [bolt] = tick(f, WEAPONS.pistol.windup * 1000);
-  act(f, 1, 'jump', WEAPONS.pistol.windup * 1000 + 50);
-  assert.equal(tick(f, WEAPONS.pistol.windup * 1000 + bolt.ms + 1)[0].jumped, true);
-
-  f = close(base, base, 0, queue(...NO_LUCK));
-  act(f, 1, 'jump', 0); act(f, 0, 'strike', 0);
-  assert.equal(tick(f, W)[0].kind, 'hit', 'melee hits you in the air');
-});
